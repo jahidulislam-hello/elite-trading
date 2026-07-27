@@ -1,14 +1,21 @@
 import 'package:get/get.dart';
+import '../../features/Post/presentation/screen/comment_screen.dart';
+import '../../features/Post/presentation/screen/post_screen.dart';
 import '../../features/authentication/presentation/screen/forgot_password_screen.dart';
 import '../../features/authentication/presentation/screen/register_screen.dart';
 import '../../features/authentication/presentation/screen/reset_pass_screen.dart';
 import '../../features/authentication/presentation/screen/sign_in_screen.dart';
 import '../../features/authentication/presentation/screen/verification_screen.dart';
+import '../../features/history/presentation/screen/history_screen.dart';
+import '../../features/notification/presentation/screen/notification_screen.dart';
 import '../../features/onboarding/presentation/screen/onbording_one.dart';
 import '../../features/onboarding/presentation/screen/onbording_start_screen.dart';
 import '../../features/onboarding/presentation/screen/onebording_three.dart';
 import '../../features/onboarding/presentation/screen/onebording_two.dart';
 import '../../features/onboarding/presentation/screen/splash_screen.dart';
+import '../../features/profile/screen/profile_Page.dart';
+import '../../features/signals/presentation/screen/all_singnal_screen.dart';
+import '../../features/signals/presentation/screen/signal_screen.dart';
 import '../../features/subcriptions/presentation/screen/add_prement_screen.dart';
 import '../../features/subcriptions/presentation/screen/choose_plan_screen.dart';
 import '../../features/subcriptions/presentation/screen/conform_trial.dart';
@@ -83,6 +90,46 @@ abstract class AppPages {
       name: AppRoutes.conformTrial,
       page: () => const ConformTrial(),
     ),
+
+    //------------------------------Signal-------------------
+    GetPage(
+      name: AppRoutes.signalScreen,
+      page: () => const SignalScreen(),
+    ),
+    GetPage(
+      name: AppRoutes.allSingnalScreen,
+      page: () => const AllSingnalScreen(),
+    ),
+
+    //------------------------------Notification-------------------
+    GetPage(
+      name: AppRoutes.notificationScreen,
+      page: () => const NotificationScreen(),
+    ),
+
+    //------------------------------post-------------------
+    GetPage(
+      name: AppRoutes.commentScreen,
+      page: () => const CommentScreen(),
+    ),
+    GetPage(
+      name: AppRoutes.postScreen,
+      page: () => const PostScreen(),
+    ),
+
+
+    //------------------------------History-------------------
+    GetPage(
+      name: AppRoutes.historyScreen,
+      page: () => const HistoryScreen(),
+    ),
+
+    //------------------------------Profile-------------------
+    GetPage(
+      name: AppRoutes.profilePage,
+      page: () => const ProfilePage(),
+    ),
+
 
   ];
 }

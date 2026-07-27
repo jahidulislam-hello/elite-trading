@@ -1,3 +1,4 @@
+import 'package:elite_trading/core/routes/app_routes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -15,23 +16,15 @@ class SignInScreen extends GetView<AuthController> {
       resizeToAvoidBottomInset: true,
       body: Stack(
         children: [
-          // Base gradient background
           Container(
-            width: double.infinity,
-            height: double.infinity,
-            color: Color(0xFF0D0B14),
-            child: Column(
-              children: [
-                Image.asset(
-                  "asset/image/onboarding/loginBack.png",
-                  width: double.infinity,
-                  fit: BoxFit.fitWidth,
-                ),
-              ],
-            ),
+            height: MediaQuery.of(context).size.height,
+            width:  MediaQuery.of(context).size.width,
+            child:Image.asset(
+      "asset/image/onboarding/background.png",
+      fit: BoxFit.cover,
+    ),
           ),
 
-          // Content
           SafeArea(
             child: SingleChildScrollView(
               padding: EdgeInsets.symmetric(horizontal: 20.w),
@@ -89,7 +82,7 @@ class SignInScreen extends GetView<AuthController> {
                         ),
                         GestureDetector(
                           onTap: () {
-                            // TODO: navigate to Sign Up
+                           Get.toNamed(AppRoutes.registerScreen);
                           },
                           child: Text(
                             'Sign Up',
@@ -178,7 +171,7 @@ class SignInScreen extends GetView<AuthController> {
                         ),
                         GestureDetector(
                           onTap: () {
-                            // TODO: navigate to Forgot Password
+                           Get.toNamed(AppRoutes.forgotPasswordScreen);
                           },
                           child: Text(
                             'Forgot Password ?',
@@ -330,7 +323,7 @@ class SignInScreen extends GetView<AuthController> {
                       ),
                     ),
 
-                    SizedBox(height: 24.h),
+                   // SizedBox(height: 24.h),
                   ],
                 ),
               ),

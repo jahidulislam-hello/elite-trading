@@ -1,7 +1,9 @@
+import 'package:elite_trading/core/routes/app_routes.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/utils/app_colors.dart';
+import 'package:get/get.dart';
 
 class OnbordingStartScreen extends StatelessWidget {
   const OnbordingStartScreen({super.key});
@@ -59,7 +61,9 @@ class OnbordingStartScreen extends StatelessWidget {
                   width: double.infinity,
                   height: 45.h,
                   child: ElevatedButton(
-                    onPressed: (){},
+                    onPressed: (){
+                      Get.offAllNamed(AppRoutes.signInScreen);
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.purple,
                       shape: RoundedRectangleBorder(

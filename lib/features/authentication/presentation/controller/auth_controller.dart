@@ -1,3 +1,4 @@
+import 'package:elite_trading/core/routes/app_routes.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -9,7 +10,7 @@ class AuthController extends GetxController {
 
   void onContinuePressed() {
     if (formKey.currentState!.validate()) {
-      print("Reset link sent to: ${emailController.text}");
+      Get.toNamed(AppRoutes.verificationScreen);
     }
   }
 
@@ -25,8 +26,7 @@ class AuthController extends GetxController {
   void onRegisterPressed() {
     if (registerFormKey.currentState!.validate()) {
       if (registerPasswordController.text != confirmPasswordController.text) {
-        Get.snackbar("Error", "Passwords do not match");
-        return;
+       Get.offAllNamed(AppRoutes.subscripFirstPage);
       }
       isRegisterLoading.value = true;
       print("Register: ${registerEmailController.text}");
@@ -49,8 +49,7 @@ class AuthController extends GetxController {
   void onSignInPressed() {
     if (signInFormKey.currentState!.validate()) {
       isSignInLoading.value = true;
-      print("Login: ${signInEmailController.text}");
-      // TODO: call login API
+     Get.offAllNamed(AppRoutes.subscripFirstPage);
       isSignInLoading.value = false;
     }
   }
@@ -71,7 +70,7 @@ class AuthController extends GetxController {
 
   void resetPassword(GlobalKey<FormState> resetFormKey) {
     if (resetFormKey.currentState!.validate()) {
-      print("Reset Password");
+      Get.toNamed(AppRoutes.signInScreen);
     }
   }
 
@@ -92,8 +91,7 @@ class AuthController extends GetxController {
     otpErrorText.value = '';
     isVerifying.value = true;
 
-    // TODO: call verify OTP API with `code`
-    print("Verifying OTP: $code");
+    Get.toNamed(AppRoutes.resetPassScreen);
 
     isVerifying.value = false;
   }

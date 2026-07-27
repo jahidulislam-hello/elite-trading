@@ -1,3 +1,4 @@
+import 'package:elite_trading/core/routes/app_routes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -15,22 +16,14 @@ class RegisterScreen extends GetView<AuthController> {
       resizeToAvoidBottomInset: true,
       body: Stack(
         children: [
-          // Base gradient background
           Container(
-            width: double.infinity,
-            height: double.infinity,
-            color: const Color(0xFF0D0B14),
-            child: Column(
-              children: [
-                Image.asset(
-                  "asset/image/onboarding/loginBack.png",
-                  width: double.infinity,
-                  fit: BoxFit.fitWidth,
-                ),
-              ],
+            height: MediaQuery.of(context).size.height,
+            width:  MediaQuery.of(context).size.width,
+            child:Image.asset(
+              "asset/image/onboarding/background.png",
+              fit: BoxFit.cover,
             ),
           ),
-
           // Content
           SafeArea(
             child: SingleChildScrollView(
@@ -77,7 +70,9 @@ class RegisterScreen extends GetView<AuthController> {
                           ),
                         ),
                         GestureDetector(
-                          onTap: () => Get.back(),
+                          onTap: (){
+                            Get.back();
+                          },
                           child: Text(
                             'Log In',
                             style: GoogleFonts.poppins(

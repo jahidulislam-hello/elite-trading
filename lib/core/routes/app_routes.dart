@@ -24,4 +24,22 @@ abstract class AppRoutes {
   static const String conformTrial = '/conformTrial';
 
 
+  //---------------------Signal----------------------------
+  static const String signalScreen = '/signalScreen';
+  static const String allSingnalScreen = '/allSingnalScreen';
+
+  //---------------------Notification----------------------------
+  static const String notificationScreen = '/notificationScreen';
+
+  //---------------------Post----------------------------
+  static const String commentScreen = '/commentScreen';
+  static const String postScreen = '/postScreen';
+
+  //--------------------History----------------------------
+  static const String historyScreen = '/historyScreen';
+
+  //---------------------Subscription----------------------------
+  static const String profilePage = '/profilePage';
+
+
 }

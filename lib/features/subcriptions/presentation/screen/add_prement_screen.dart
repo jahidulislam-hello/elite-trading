@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/utils/customeTextField/custom_text_field.dart';
 import '../../../authentication/presentation/widget/Elevatedbutton.dart';
 import '../../data/model/plan_model.dart';
 import '../controller/subscriptions_controller.dart';
+import '../widget/progress_step_header.dart';
 
 class AddPrementScreen extends GetView<SubscriptionsController> {
   const AddPrementScreen({super.key});
@@ -28,7 +30,10 @@ class AddPrementScreen extends GetView<SubscriptionsController> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   SizedBox(height: 16.h),
-                  _ProgressHeader(controller: controller),
+                  ProgressStepHeader(
+                    currentStep: 3,
+                    totalSteps: 4,
+                  ),
 
                   SizedBox(height: 28.h),
 
@@ -105,51 +110,43 @@ class AddPrementScreen extends GetView<SubscriptionsController> {
                   ),
                   SizedBox(height: 8.h),
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
-                        child: Container(
-                          height: 46.h,
-                          padding: EdgeInsets.symmetric(horizontal: 14.w),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF1B1830),
-                            borderRadius: BorderRadius.circular(12.r),
-                            border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.06)),
-                          ),
-                          child: TextField(
-                            controller: controller.couponController,
-                            style: GoogleFonts.poppins(
-                              fontSize: 13.sp,
-                              color: Colors.white,
-                            ),
-                            decoration: InputDecoration(
-                              hintText: 'Enter coupon code',
-                              hintStyle: GoogleFonts.poppins(
-                                fontSize: 13.sp,
-                                color: Colors.white38,
-                              ),
-                              border: InputBorder.none,
-                            ),
-                          ),
+                        child: CustomTextField(
+                          controller: controller.couponController,
+                          hintText: 'Enter coupon code',
+                          filColor: const Color(0xFF1B1830),
+                          hinTextColor: Colors.white,
+                          borderColor: Colors.white.withValues(alpha: 0.06),
+                          borderRadius: 12,
+                          borderHeight: 1,
+                          contentPaddingHorizontal: 14,
+                          contentPaddingVertical: 14,
+                          hinTextSize: 13,
+                          isvalidation: false,
                         ),
                       ),
                       SizedBox(width: 10.w),
-                      GestureDetector(
-                        onTap: controller.applyCoupon,
-                        child: Container(
-                          height: 46.h,
-                          padding: EdgeInsets.symmetric(horizontal: 22.w),
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF7B1FE0),
-                            borderRadius: BorderRadius.circular(12.r),
-                          ),
-                          child: Text(
-                            'Apply',
-                            style: GoogleFonts.poppins(
-                              fontSize: 13.sp,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
+                      Padding(
+                        padding: EdgeInsets.only(top: 0),
+                        child: GestureDetector(
+                          onTap: controller.applyCoupon,
+                          child: Container(
+                            height: 50.h,
+                            padding: EdgeInsets.symmetric(horizontal: 22.w),
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF7B1FE0),
+                              borderRadius: BorderRadius.circular(12.r),
+                            ),
+                            child: Text(
+                              'Apply',
+                              style: GoogleFonts.poppins(
+                                fontSize: 13.sp,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
                             ),
                           ),
                         ),
@@ -206,11 +203,21 @@ class AddPrementScreen extends GetView<SubscriptionsController> {
                     ),
                   ),
                   SizedBox(height: 8.h),
-                  _InputField(
+                  CustomTextField(
                     controller: controller.cardNumberController,
-                    hint: '1234 5678 9012 3456',
-                    icon: Icons.credit_card,
+                    hintText: '1234 5678 9012 3456',
                     keyboardType: TextInputType.number,
+                    prefixIcon: Icon(Icons.credit_card, size: 16.sp),
+                    iconColor: Colors.white38,
+                    filColor: const Color(0xFF1B1830),
+                    hinTextColor: Colors.white,
+                    borderColor: Colors.white.withValues(alpha: 0.06),
+                    borderRadius: 12,
+                    borderHeight: 1,
+                    contentPaddingHorizontal: 14,
+                    contentPaddingVertical: 14,
+                    hinTextSize: 13,
+                    isvalidation: false,
                   ),
 
                   SizedBox(height: 16.h),
@@ -224,15 +231,26 @@ class AddPrementScreen extends GetView<SubscriptionsController> {
                     ),
                   ),
                   SizedBox(height: 8.h),
-                  _InputField(
+                  CustomTextField(
                     controller: controller.cardHolderController,
-                    hint: 'Alex Kim',
-                    icon: Icons.person_outline,
+                    hintText: 'Alex Kim',
+                    prefixIcon: Icon(Icons.person_outline, size: 16.sp),
+                    iconColor: Colors.white38,
+                    filColor: const Color(0xFF1B1830),
+                    hinTextColor: Colors.white,
+                    borderColor: Colors.white.withValues(alpha: 0.06),
+                    borderRadius: 12,
+                    borderHeight: 1,
+                    contentPaddingHorizontal: 14,
+                    contentPaddingVertical: 14,
+                    hinTextSize: 13,
+                    isvalidation: false,
                   ),
 
                   SizedBox(height: 16.h),
 
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
                         child: Column(
@@ -247,10 +265,19 @@ class AddPrementScreen extends GetView<SubscriptionsController> {
                               ),
                             ),
                             SizedBox(height: 8.h),
-                            _InputField(
+                            CustomTextField(
                               controller: controller.expiryController,
-                              hint: 'MM/YY',
+                              hintText: 'MM/YY',
                               keyboardType: TextInputType.datetime,
+                              filColor: const Color(0xFF1B1830),
+                              hinTextColor: Colors.white,
+                              borderColor: Colors.white.withValues(alpha: 0.06),
+                              borderRadius: 12,
+                              borderHeight: 1,
+                              contentPaddingHorizontal: 14,
+                              contentPaddingVertical: 14,
+                              hinTextSize: 13,
+                              isvalidation: false,
                             ),
                           ],
                         ),
@@ -269,11 +296,21 @@ class AddPrementScreen extends GetView<SubscriptionsController> {
                               ),
                             ),
                             SizedBox(height: 8.h),
-                            _InputField(
+                            CustomTextField(
                               controller: controller.cvcController,
-                              hint: '•••',
+                              hintText: '•••',
                               keyboardType: TextInputType.number,
-                              obscureText: true,
+                              isPassword: true,
+                              iconColor: Colors.white38,
+                              filColor: const Color(0xFF1B1830),
+                              hinTextColor: Colors.white,
+                              borderColor: Colors.white.withValues(alpha: 0.06),
+                              borderRadius: 12,
+                              borderHeight: 1,
+                              contentPaddingHorizontal: 14,
+                              contentPaddingVertical: 14,
+                              hinTextSize: 13,
+                              isvalidation: false,
                             ),
                           ],
                         ),
@@ -300,7 +337,18 @@ class AddPrementScreen extends GetView<SubscriptionsController> {
                             '${controller.selectedPlan.title} — \$${controller.selectedPlan.price}/mo',
                             valueColor: Colors.white,
                           ),
-                          SizedBox(height: 10.h),
+                          SizedBox(height: 5.h),
+                          Divider(color: Colors.white.withValues(alpha: 0.3),thickness: 0.5,),
+                          SizedBox(height: 5.h),
+                          _SummaryRow(
+                            label: 'Coupon Discount',
+                            value: '-\$10.00',
+                            valueColor: const Color(0xFF2ECC71),
+                            isBold: true,
+                          ),
+                          SizedBox(height: 5.h),
+                          Divider(color: Colors.white.withValues(alpha: 0.3),thickness: 0.5,),
+                          SizedBox(height: 5.h),
                           if (controller.isCouponApplied.value) ...[
                             _SummaryRow(
                               label: 'Coupon Discount',
@@ -308,14 +356,18 @@ class AddPrementScreen extends GetView<SubscriptionsController> {
                               '-\$${controller.couponDiscount.value.toStringAsFixed(2)}',
                               valueColor: const Color(0xFF2ECC71),
                             ),
-                            SizedBox(height: 10.h),
+                            SizedBox(height: 5.h),
+                            Divider(color: Colors.white.withValues(alpha: 0.3),thickness: 0.5,),
+                            SizedBox(height: 5.h),
                           ],
                           _SummaryRow(
                             label: 'Trial Period',
                             value: '1 Month Free',
                             valueColor: const Color(0xFF7B1FE0),
                           ),
-                          SizedBox(height: 10.h),
+                          SizedBox(height: 5.h),
+                          Divider(color: Colors.white.withValues(alpha: 0.3),thickness: 0.5,),
+                          SizedBox(height: 5.h),
                           _SummaryRow(
                             label: 'Due Today',
                             value: '\$${controller.dueToday.toStringAsFixed(2)}',
@@ -345,63 +397,6 @@ class AddPrementScreen extends GetView<SubscriptionsController> {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _ProgressHeader extends StatelessWidget {
-  final SubscriptionsController controller;
-  const _ProgressHeader({required this.controller});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        GestureDetector(
-          onTap: () => Get.back(),
-          child: Container(
-            padding: EdgeInsets.all(8.w),
-            decoration: const BoxDecoration(
-              color: Color(0xFF73737380),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(Icons.chevron_left, color: Colors.white, size: 20.sp),
-          ),
-        ),
-        SizedBox(width: 14.w),
-        Expanded(
-          child: Obx(
-                () => Row(
-              children: List.generate(
-                controller.totalSteps,
-                    (index) => Expanded(
-                  child: Container(
-                    margin: EdgeInsets.symmetric(horizontal: 3.w),
-                    height: 5.h,
-                    decoration: BoxDecoration(
-                      color: index < controller.currentStep.value
-                          ? const Color(0xFF7B1FE0)
-                          : const Color(0xFFFFFFFF),
-                      borderRadius: BorderRadius.circular(10.r),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-        SizedBox(width: 14.w),
-        Obx(
-              () => Text(
-            '${controller.currentStep.value}/${controller.totalSteps}',
-            style: GoogleFonts.poppins(
-              fontSize: 13.sp,
-              fontWeight: FontWeight.w500,
-              color: Colors.white70,
-            ),
-          ),
-        ),
-      ],
     );
   }
 }
@@ -598,59 +593,6 @@ class _CardPreview extends StatelessWidget {
               : const SizedBox.shrink(),
         ),
       ],
-    );
-  }
-}
-
-class _InputField extends StatelessWidget {
-  final TextEditingController controller;
-  final String hint;
-  final IconData? icon;
-  final TextInputType? keyboardType;
-  final bool obscureText;
-
-  const _InputField({
-    required this.controller,
-    required this.hint,
-    this.icon,
-    this.keyboardType,
-    this.obscureText = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 50.h,
-      padding: EdgeInsets.symmetric(horizontal: 14.w),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1B1830),
-        borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
-      ),
-      child: Row(
-        children: [
-          if (icon != null) ...[
-            Icon(icon, size: 16.sp, color: Colors.white38),
-            SizedBox(width: 10.w),
-          ],
-          Expanded(
-            child: TextField(
-              controller: controller,
-              keyboardType: keyboardType,
-              obscureText: obscureText,
-              style: GoogleFonts.poppins(fontSize: 13.sp, color: Colors.white),
-              decoration: InputDecoration(
-                hintText: hint,
-                hintStyle: GoogleFonts.poppins(
-                  fontSize: 13.sp,
-                  color: Colors.white38,
-                ),
-                border: InputBorder.none,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

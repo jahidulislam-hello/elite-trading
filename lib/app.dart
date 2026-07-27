@@ -40,7 +40,7 @@ class MyApp extends StatelessWidget {
           ),
           defaultTransition: Transition.rightToLeft,
           transitionDuration: const Duration(milliseconds: 250),
-          initialRoute:AppRoutes.subscripFirstPage,//initialRoute,
+          initialRoute:AppRoutes.profilePage,//initialRoute,
           getPages: AppPages.routes,
         );
       },

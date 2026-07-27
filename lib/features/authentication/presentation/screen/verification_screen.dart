@@ -47,23 +47,15 @@ class VerificationScreen extends GetView<AuthController> {
       resizeToAvoidBottomInset: true,
       body: Stack(
         children: [
-          // Base gradient background
           Container(
-            width: double.infinity,
-            height: double.infinity,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Color(0xFF0D0B14),
-                  Color(0xFF0E0530),
-                ],
-              ),
+            height: MediaQuery.of(context).size.height,
+            width:  MediaQuery.of(context).size.width,
+            child:Image.asset(
+              "asset/image/onboarding/background.png",
+              fit: BoxFit.cover,
             ),
           ),
 
-          // Glow ellipse
           Positioned(
             top: -190.h,
             left: 0,

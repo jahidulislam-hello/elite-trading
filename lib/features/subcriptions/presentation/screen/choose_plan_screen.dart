@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../authentication/presentation/widget/Elevatedbutton.dart';
 import '../controller/subscriptions_controller.dart';
 import '../../data/model/plan_model.dart';
+import '../widget/progress_step_header.dart';
 
 class ChoosePlanScreen extends GetView<SubscriptionsController> {
   const ChoosePlanScreen({super.key});
@@ -30,57 +31,9 @@ class ChoosePlanScreen extends GetView<SubscriptionsController> {
                   SizedBox(height: 16.h),
 
                   // Back button + progress bar
-                  Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () => Get.back(),
-                        child: Container(
-                          padding: EdgeInsets.all(8.w),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF73737380),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            Icons.chevron_left,
-                            color: Colors.white,
-                            size: 20.sp,
-                          ),
-                        ),
-                      ),
-                      SizedBox(width: 14.w),
-                      Expanded(
-                        child: Obx(
-                              () => Row(
-                            children: List.generate(
-                              controller.totalSteps,
-                                  (index) => Expanded(
-                                child: Container(
-                                  margin: EdgeInsets.symmetric(horizontal: 3.w),
-                                  height: 5.h,
-                                  decoration: BoxDecoration(
-                                    color: index < controller.currentStep.value
-                                        ? const Color(0xFF7B1FE0)
-                                        : const Color(0xFFFFFFFF),
-                                    borderRadius: BorderRadius.circular(10.r),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      SizedBox(width: 14.w),
-                      Obx(
-                            () => Text(
-                          '${controller.currentStep.value}/${controller.totalSteps}',
-                          style: GoogleFonts.poppins(
-                            fontSize: 13.sp,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white70,
-                          ),
-                        ),
-                      ),
-                    ],
+                  ProgressStepHeader(
+                    currentStep: 2,
+                    totalSteps: 4,
                   ),
 
                   SizedBox(height: 28.h),
@@ -429,7 +382,7 @@ class _ComparisonTable extends StatelessWidget {
                       child: Center(
                         child: entry.value
                             ? Icon(
-                          Icons.check_circle,
+                          Icons.check_circle_outline,
                           size: 15.sp,
                           color: entry.key == 2
                               ? const Color(0xFFE0A11F)

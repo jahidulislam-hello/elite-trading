@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../authentication/presentation/widget/Elevatedbutton.dart';
 import '../../data/model/plan_model.dart';
 import '../controller/subscriptions_controller.dart';
+import '../widget/progress_step_header.dart';
 
 class ConformTrial extends GetView<SubscriptionsController> {
   const ConformTrial({super.key});
@@ -30,54 +31,9 @@ class ConformTrial extends GetView<SubscriptionsController> {
                   SizedBox(height: 16.h),
 
                   // Back button + progress bar
-                  Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () => Get.back(),
-                        child: Container(
-                          padding: EdgeInsets.all(8.w),
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF73737380),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(Icons.chevron_left,
-                              color: Colors.white, size: 20.sp),
-                        ),
-                      ),
-                      SizedBox(width: 14.w),
-                      Expanded(
-                        child: Obx(
-                              () => Row(
-                            children: List.generate(
-                              controller.totalSteps,
-                                  (index) => Expanded(
-                                child: Container(
-                                  margin: EdgeInsets.symmetric(horizontal: 3.w),
-                                  height: 5.h,
-                                  decoration: BoxDecoration(
-                                    color: index < controller.currentStep.value
-                                        ? const Color(0xFF7B1FE0)
-                                        : const Color(0xFFFFFFFF),
-                                    borderRadius: BorderRadius.circular(10.r),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      SizedBox(width: 14.w),
-                      Obx(
-                            () => Text(
-                          '${controller.currentStep.value}/${controller.totalSteps}',
-                          style: GoogleFonts.poppins(
-                            fontSize: 13.sp,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white70,
-                          ),
-                        ),
-                      ),
-                    ],
+                  ProgressStepHeader(
+                    currentStep: 4,
+                    totalSteps: 4,
                   ),
 
                   SizedBox(height: 28.h),
@@ -103,30 +59,6 @@ class ConformTrial extends GetView<SubscriptionsController> {
                   SizedBox(height: 22.h),
 
                   // Founding member badge
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 5.h),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF7B1FE0).withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(20.r),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.emoji_events,
-                            size: 12.sp, color: const Color(0xFFE0A11F)),
-                        SizedBox(width: 6.w),
-                        Text(
-                          'FOUNDING MEMBER · TOP 100',
-                          style: GoogleFonts.poppins(
-                            fontSize: 9.sp,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFFE0A11F),
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
 
                   SizedBox(height: 14.h),
 
@@ -136,8 +68,8 @@ class ConformTrial extends GetView<SubscriptionsController> {
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
-                          const Color(0xFFE0A11F).withValues(alpha: 0.15),
-                          const Color(0xFF1B1830),
+                          const Color(0xFFBFA06D).withValues(alpha: 0.13),
+                          const Color(0xFFD7C48D).withValues(alpha: 0.7),
                         ],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
@@ -149,6 +81,31 @@ class ConformTrial extends GetView<SubscriptionsController> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        Container(
+                          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 5.h),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF00000000).withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(20.r),
+                            border: Border.all(color: Color(0xFFBFA06D))
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.emoji_events,
+                                  size: 12.sp, color: const Color(0xFFE0A11F)),
+                              SizedBox(width: 6.w),
+                              Text(
+                                'FOUNDING MEMBER · TOP 100',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 9.sp,
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFFE0A11F),
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                         Text(
                           '1 Month Free',
                           style: GoogleFonts.poppins(
@@ -190,19 +147,25 @@ class ConformTrial extends GetView<SubscriptionsController> {
                             valueColor: Colors.white,
                             isBold: true,
                           ),
-                          SizedBox(height: 12.h),
+                          SizedBox(height: 5.h),
+                          Divider(color: Colors.white.withValues(alpha: 0.3),thickness: 0.5,),
+                          SizedBox(height: 5.h),
                           _DetailRow(
                             label: 'Trial Period',
                             value: '1 Month Free',
                             valueColor: const Color(0xFF7B1FE0),
                           ),
-                          SizedBox(height: 12.h),
+                          SizedBox(height: 5.h),
+                          Divider(color: Colors.white.withValues(alpha: 0.3),thickness: 0.5,),
+                          SizedBox(height: 5.h),
                           _DetailRow(
                             label: 'First Charge',
                             value: controller.firstChargeDate,
                             valueColor: Colors.white,
                           ),
-                          SizedBox(height: 12.h),
+                          SizedBox(height: 5.h),
+                          Divider(color: Colors.white.withValues(alpha: 0.3),thickness: 0.5,),
+                          SizedBox(height: 5.h),
                           _DetailRow(
                             label: 'Due Today',
                             value: '\$${controller.dueToday.toStringAsFixed(2)}',
@@ -243,7 +206,7 @@ class ConformTrial extends GetView<SubscriptionsController> {
                             padding: EdgeInsets.only(bottom: 10.h),
                             child: Row(
                               children: [
-                                Icon(Icons.check_circle,
+                                Icon(Icons.check_circle_outline,
                                     size: 14.sp, color: const Color(0xFF7B1FE0)),
                                 SizedBox(width: 8.w),
                                 Text(
@@ -269,17 +232,17 @@ class ConformTrial extends GetView<SubscriptionsController> {
                     width: double.infinity,
                     padding: EdgeInsets.all(14.w),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF7B1FE0).withValues(alpha: 0.08),
+                      color: const Color(0xFFFF5A6B0F).withValues(alpha: 0.06),
                       borderRadius: BorderRadius.circular(12.r),
                       border: Border.all(
-                          color: const Color(0xFF7B1FE0).withValues(alpha: 0.2)),
+                          color: const Color(0xFFFF5A6B26).withValues(alpha: 0.5)),
                     ),
                     child: Obx(
                           () => Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Icon(Icons.error_outline,
-                              size: 14.sp, color: const Color(0xFF7B1FE0)),
+                              size: 14.sp, color: const Color(0xFFFF5A6B)),
                           SizedBox(width: 8.w),
                           Expanded(
                             child: Text(
@@ -303,7 +266,7 @@ class ConformTrial extends GetView<SubscriptionsController> {
                     text: 'Start Free Trial  →',
                     onTap: controller.onStartFreeTrialPressed,
                     isLoading: false,
-                    backgroundColor: const Color(0xFFE0A11F),
+                    backgroundColor: const Color(0xFFBFA06D),
                     textColor: Colors.black87,
                     height: 54.h,
                     borderRadius: 13.r,
@@ -349,7 +312,7 @@ class _DetailRow extends StatelessWidget {
         Text(
           value,
           style: GoogleFonts.poppins(
-            fontSize: 13.sp,
+            fontSize: 14.sp,
             fontWeight: isBold ? FontWeight.w700 : FontWeight.w600,
             color: valueColor,
           ),

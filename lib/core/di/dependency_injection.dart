@@ -1,5 +1,10 @@
 import 'package:get/get.dart';
+import '../../features/Post/presentation/controller/post_controller.dart';
 import '../../features/authentication/presentation/controller/auth_controller.dart';
+import '../../features/history/presentation/container/history_container.dart';
+import '../../features/notification/presentation/controller/notification_controller.dart';
+import '../../features/profile/controller/profile_controller.dart';
+import '../../features/signals/presentation/controller/signal_controller.dart';
 import '../../features/subcriptions/presentation/controller/subscriptions_controller.dart';
 import '../services/api_service.dart';
 import '../services/cache_service.dart';
@@ -24,6 +29,13 @@ class DependencyInjection {
 
     //---------------------Subscription----------------------------
     Get.lazyPut<SubscriptionsController>(() => SubscriptionsController(), fenix: true);
+
+    //---------------------Signal----------------------------
+    Get.lazyPut<SignalController>(() => SignalController(), fenix: true);
+    Get.lazyPut<NotificationController>(() => NotificationController(), fenix: true);
+    Get.lazyPut<PostController>(() => PostController(), fenix: true);
+    Get.lazyPut<HistoryContainer>(() => HistoryContainer(), fenix: true);
+    Get.lazyPut<ProfileController>(() => ProfileController(), fenix: true);
 
 
   }

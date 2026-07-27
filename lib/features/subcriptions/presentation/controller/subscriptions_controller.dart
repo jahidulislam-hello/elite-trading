@@ -106,8 +106,7 @@ class SubscriptionsController extends GetxController {
   final String firstChargeDate = 'Aug 21, 2026';
 
   void onStartFreeTrialPressed() {
-    print("Starting free trial for plan: ${selectedPlanId.value}");
-    // TODO: call subscription API / navigate to home
+    Get.toNamed(AppRoutes.signalScreen);
   }
 
   @override

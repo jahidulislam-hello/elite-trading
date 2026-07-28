@@ -106,7 +106,7 @@ class SubscriptionsController extends GetxController {
   final String firstChargeDate = 'Aug 21, 2026';
 
   void onStartFreeTrialPressed() {
-    Get.toNamed(AppRoutes.signalScreen);
+    Get.toNamed(AppRoutes.bottomNavScreen);
   }
 
   @override

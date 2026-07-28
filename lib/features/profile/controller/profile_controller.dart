@@ -1,7 +1,13 @@
 import 'package:elite_trading/core/routes/app_routes.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../screen/Help_support_screen.dart';
+import '../screen/about_screen.dart';
+import '../screen/personal_info.dart';
+import '../screen/terms_condition_screen.dart';
 import '../widget/change_password_sheet.dart';
+import '../widget/sign_out_dialog.dart';
 
 class ProfileController extends GetxController {
   //---------------- User info ----------------
@@ -49,6 +55,52 @@ class ProfileController extends GetxController {
     }
   }
 
+  //---------------- Personal Info ----------------
+  final personalInfoFormKey = GlobalKey<FormState>();
+  final TextEditingController firstNameController = TextEditingController(text: 'Lois');
+  final TextEditingController lastNameController = TextEditingController(text: 'Becket');
+  final TextEditingController emailAddressController = TextEditingController();
+  final RxBool isSavingPersonalInfo = false.obs;
+
+  void onSavePersonalInfoPressed() async {
+    if (personalInfoFormKey.currentState!.validate()) {
+      isSavingPersonalInfo.value = true;
+      // TODO: call update-profile API
+      await Future.delayed(const Duration(milliseconds: 600));
+      isSavingPersonalInfo.value = false;
+      Get.back();
+      Get.snackbar('Success', 'Personal info updated successfully');
+    }
+  }
+
+  //---------------- Help & Support ----------------
+  final String supportEmail = 'example12345@gmail.com';
+
+  void onContactSupportPressed() async {
+    final Uri emailUri = Uri(
+      scheme: 'mailto',
+      path: supportEmail,
+      query: _encodeQueryParameters({
+        'subject': 'Support Request - Elite Trading',
+      }),
+    );
+
+    try {
+      final launched = await launchUrl(emailUri);
+      if (!launched) {
+        Get.snackbar('Error', 'Could not open email app');
+      }
+    } catch (e) {
+      Get.snackbar('Error', 'Could not open email app');
+    }
+  }
+
+  String _encodeQueryParameters(Map<String, String> params) {
+    return params.entries
+        .map((e) => '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}')
+        .join('&');
+  }
+
   //---------------- Avatar edit ----------------
   void onEditAvatarPressed() {
     print("Edit avatar tapped");
@@ -56,27 +108,21 @@ class ProfileController extends GetxController {
   }
 
   //---------------- Menu actions ----------------
-  void onPersonalInfoPressed() => print("Personal Info tapped");
+  void onPersonalInfoPressed() => Get.to(() => const PersonalInfo());
   void onNotificationSettingsPressed() => print("Notification Settings tapped");
-  void onHelpSupportPressed() => print("Help & Support tapped");
-  void onTermsConditionsPressed() => print("Terms & Conditions tapped");
-  void onAboutPressed() => print("About Elite Trading tapped");
+  void onHelpSupportPressed() => Get.to(() => const HelpSupportScreen());
+  void onTermsConditionsPressed() => Get.to(() => const TermsConditionScreen());
+  void onAboutPressed() => Get.to(() => const AboutScreen());
 
   //---------------- Sign out ----------------
   void onSignOutPressed() {
-    Get.defaultDialog(
-      backgroundColor: const Color(0xFF1B1830),
-      titleStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
-      title: 'Sign Out',
-      middleText: 'Are you sure you want to sign out?',
-      middleTextStyle: const TextStyle(color: Colors.white70),
-      textConfirm: 'Sign Out',
-      textCancel: 'Cancel',
-      confirmTextColor: Colors.white,
-      buttonColor: const Color(0xFFE0405C),
-      onConfirm: () {
-        Get.offAllNamed(AppRoutes.signInScreen);
-      },
+    Get.dialog(
+      SignOutDialog(
+        onConfirm: () {
+          Get.offAllNamed(AppRoutes.signInScreen);
+        },
+      ),
+      barrierDismissible: true,
     );
   }
 
@@ -85,6 +131,9 @@ class ProfileController extends GetxController {
     currentPasswordController.dispose();
     newPasswordController.dispose();
     confirmPasswordController.dispose();
+    firstNameController.dispose();
+    lastNameController.dispose();
+    emailAddressController.dispose();
     super.onClose();
   }
 }

@@ -13,16 +13,15 @@ class SignInScreen extends GetView<AuthController> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFF0F0B1E),
       resizeToAvoidBottomInset: true,
       body: Stack(
         children: [
-          Container(
-            height: MediaQuery.of(context).size.height,
-            width:  MediaQuery.of(context).size.width,
-            child:Image.asset(
-      "asset/image/onboarding/background.png",
-      fit: BoxFit.cover,
-    ),
+          Positioned.fill(
+            child: Image.asset(
+              "asset/image/onboarding/background.png",
+              fit: BoxFit.cover,
+            ),
           ),
 
           SafeArea(
@@ -82,7 +81,7 @@ class SignInScreen extends GetView<AuthController> {
                         ),
                         GestureDetector(
                           onTap: () {
-                           Get.toNamed(AppRoutes.registerScreen);
+                            Get.offNamed(AppRoutes.registerScreen);
                           },
                           child: Text(
                             'Sign Up',
@@ -171,7 +170,7 @@ class SignInScreen extends GetView<AuthController> {
                         ),
                         GestureDetector(
                           onTap: () {
-                           Get.toNamed(AppRoutes.forgotPasswordScreen);
+                            Get.offNamed(AppRoutes.forgotPasswordScreen);
                           },
                           child: Text(
                             'Forgot Password ?',
@@ -323,7 +322,7 @@ class SignInScreen extends GetView<AuthController> {
                       ),
                     ),
 
-                   // SizedBox(height: 24.h),
+                    // SizedBox(height: 24.h),
                   ],
                 ),
               ),

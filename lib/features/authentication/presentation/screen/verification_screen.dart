@@ -12,8 +12,6 @@ class VerificationScreen extends GetView<AuthController> {
 
   @override
   Widget build(BuildContext context) {
-    final verificationForm = GlobalKey<FormState>();
-
     final defaultPinTheme = PinTheme(
       width: 38.w,
       height: 48.h,
@@ -44,15 +42,16 @@ class VerificationScreen extends GetView<AuthController> {
     );
 
     return Scaffold(
+      backgroundColor: const Color(0xFF0F0B1E),
       resizeToAvoidBottomInset: true,
       body: Stack(
         children: [
-          Container(
-            height: MediaQuery.of(context).size.height,
-            width:  MediaQuery.of(context).size.width,
-            child:Image.asset(
-              "asset/image/onboarding/background.png",
-              fit: BoxFit.cover,
+          const Positioned.fill(
+            child: RepaintBoundary(
+              child: Image(
+                image: AssetImage("asset/image/onboarding/background.png"),
+                fit: BoxFit.cover,
+              ),
             ),
           ),
 
@@ -60,24 +59,26 @@ class VerificationScreen extends GetView<AuthController> {
             top: -190.h,
             left: 0,
             right: 0,
-            child: Center(
-              child: Transform.scale(
-                scaleX: 1.7,
-                scaleY: 1.0,
-                child: Container(
-                  width: 300.w,
-                  height: 350.h,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      colors: [
-                        const Color(0xFF6E00DD).withValues(alpha: 0.55),
-                        const Color(0xFF6E00DD).withValues(alpha: 0.22),
-                        const Color(0xFF6E00DD).withValues(alpha: 0.10),
-                        const Color(0xFF6E00DD).withValues(alpha: 0.03),
-                        const Color(0xFF6E00DD).withValues(alpha: 0.0),
-                      ],
-                      stops: const [0.0, 0.3, 0.55, 0.8, 1.0],
+            child: RepaintBoundary(
+              child: Center(
+                child: Transform.scale(
+                  scaleX: 1.7,
+                  scaleY: 1.0,
+                  child: Container(
+                    width: 300.w,
+                    height: 350.h,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          const Color(0xFF6E00DD).withValues(alpha: 0.55),
+                          const Color(0xFF6E00DD).withValues(alpha: 0.22),
+                          const Color(0xFF6E00DD).withValues(alpha: 0.10),
+                          const Color(0xFF6E00DD).withValues(alpha: 0.03),
+                          const Color(0xFF6E00DD).withValues(alpha: 0.0),
+                        ],
+                        stops: const [0.0, 0.3, 0.55, 0.8, 1.0],
+                      ),
                     ),
                   ),
                 ),
@@ -85,18 +86,16 @@ class VerificationScreen extends GetView<AuthController> {
             ),
           ),
 
-          // Content
           SafeArea(
             child: SingleChildScrollView(
               padding: EdgeInsets.symmetric(horizontal: 20.w),
               child: Form(
-                key: verificationForm,
+                key: controller.verificationFormKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     SizedBox(height: 60.h),
 
-                    // Logo
                     Center(
                       child: Image.asset(
                         'asset/image/onboarding/logo.png',
@@ -107,7 +106,6 @@ class VerificationScreen extends GetView<AuthController> {
 
                     SizedBox(height: 20.h),
 
-                    // Title
                     Center(
                       child: Text(
                         'Enter verification code',
@@ -121,7 +119,6 @@ class VerificationScreen extends GetView<AuthController> {
                     ),
                     SizedBox(height: 8.h),
 
-                    // Subtitle
                     Center(
                       child: Text(
                         "We've sent a verification code to example@gmail.com that will expire in 10 minutes. Please enter to continue",
@@ -136,7 +133,6 @@ class VerificationScreen extends GetView<AuthController> {
 
                     SizedBox(height: 36.h),
 
-                    // OTP field
                     Center(
                       child: Pinput(
                         length: 6,
@@ -156,7 +152,6 @@ class VerificationScreen extends GetView<AuthController> {
                           }
                         },
                         onCompleted: (pin) {
-                          // Auto-verify as soon as 6 digits are entered
                           controller.verificationCode(pin);
                         },
                       ),
@@ -164,7 +159,6 @@ class VerificationScreen extends GetView<AuthController> {
 
                     SizedBox(height: 10.h),
 
-                    // Inline validation error
                     Obx(
                           () => controller.otpErrorText.value.isEmpty
                           ? const SizedBox.shrink()
@@ -182,7 +176,6 @@ class VerificationScreen extends GetView<AuthController> {
 
                     SizedBox(height: 20.h),
 
-                    // Resend code
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -211,7 +204,6 @@ class VerificationScreen extends GetView<AuthController> {
 
                     SizedBox(height: 80.h),
 
-                    // Verify button (also works as manual trigger)
                     Obx(
                           () => CustomElevatedButton(
                         text: 'Verify',

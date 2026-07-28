@@ -11,17 +11,17 @@ class ResetPassScreen extends GetView<AuthController> {
 
   @override
   Widget build(BuildContext context) {
-    final resetValidation = GlobalKey<FormState>();
     return Scaffold(
+      backgroundColor: const Color(0xFF0F0B1E),
       resizeToAvoidBottomInset: true,
       body: Stack(
         children: [
-          Container(
-            height: MediaQuery.of(context).size.height,
-            width:  MediaQuery.of(context).size.width,
-            child:Image.asset(
-              "asset/image/onboarding/background.png",
-              fit: BoxFit.cover,
+          const Positioned.fill(
+            child: RepaintBoundary(
+              child: Image(
+                image: AssetImage("asset/image/onboarding/background.png"),
+                fit: BoxFit.cover,
+              ),
             ),
           ),
 
@@ -29,24 +29,26 @@ class ResetPassScreen extends GetView<AuthController> {
             top: -190.h,
             left: 0,
             right: 0,
-            child: Center(
-              child: Transform.scale(
-                scaleX: 1.7,
-                scaleY: 1.0,
-                child: Container(
-                  width: 300.w,
-                  height: 350.h,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      colors: [
-                        const Color(0xFF6E00DD).withValues(alpha: 0.55),
-                        const Color(0xFF6E00DD).withValues(alpha:0.22),
-                        const Color(0xFF6E00DD).withValues(alpha:0.10),
-                        const Color(0xFF6E00DD).withValues(alpha:0.03),
-                        const Color(0xFF6E00DD).withValues(alpha:0.0),
-                      ],
-                      stops: const [0.0, 0.3, 0.55, 0.8, 1.0],
+            child: RepaintBoundary(
+              child: Center(
+                child: Transform.scale(
+                  scaleX: 1.7,
+                  scaleY: 1.0,
+                  child: Container(
+                    width: 300.w,
+                    height: 350.h,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          const Color(0xFF6E00DD).withValues(alpha: 0.55),
+                          const Color(0xFF6E00DD).withValues(alpha: 0.22),
+                          const Color(0xFF6E00DD).withValues(alpha: 0.10),
+                          const Color(0xFF6E00DD).withValues(alpha: 0.03),
+                          const Color(0xFF6E00DD).withValues(alpha: 0.0),
+                        ],
+                        stops: const [0.0, 0.3, 0.55, 0.8, 1.0],
+                      ),
                     ),
                   ),
                 ),
@@ -59,7 +61,7 @@ class ResetPassScreen extends GetView<AuthController> {
             child: SingleChildScrollView(
               padding: EdgeInsets.symmetric(horizontal: 20.w),
               child: Form(
-                key: resetValidation,
+                key: controller.resetPassFormKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -103,7 +105,7 @@ class ResetPassScreen extends GetView<AuthController> {
                       iconColor: Colors.white54,
                       prefixIcon: const Icon(Icons.lock_outline),
                     ),
-                    SizedBox(height:10.h),
+                    SizedBox(height: 10.h),
                     CustomTextField(
                       labelText: "Confirm Password *",
                       levelTextSize: 13,
@@ -118,27 +120,27 @@ class ResetPassScreen extends GetView<AuthController> {
                       contentPaddingVertical: 16,
                       iconColor: Colors.white54,
                       prefixIcon: const Icon(Icons.lock_outline),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return "Please enter your confirm password";
-                          }
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return "Please enter your confirm password";
+                        }
 
-                          if (value != controller.resetPass.text) {
-                            return "Password and confirm password do not match";
-                          }
+                        if (value != controller.resetPass.text) {
+                          return "Password and confirm password do not match";
+                        }
 
-                          return null;
-                        },
+                        return null;
+                      },
                     ),
 
                     SizedBox(height: 100.h),
 
                     CustomElevatedButton(
-                        text: 'Reset Password',
-                        onTap:(){
-                          controller.resetPassword(resetValidation);
-                        },
-                      ),
+                      text: 'Reset Password',
+                      onTap: () {
+                        controller.resetPassword();
+                      },
+                    ),
 
                     SizedBox(height: 40.h),
                   ],

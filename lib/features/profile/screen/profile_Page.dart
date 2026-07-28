@@ -32,7 +32,7 @@ class ProfilePage extends GetView<ProfileController> {
                     ),
                   ),
                   Container(
-                    color: const Color(0xFF0F0B1E).withValues(alpha: 0.75),
+                    color: const Color(0xFF0F0B1E).withValues(alpha: 0.6),
                   ),
                   Container(
                     decoration: BoxDecoration(
@@ -41,7 +41,7 @@ class ProfilePage extends GetView<ProfileController> {
                         end: Alignment.bottomCenter,
                         colors: [
                           Colors.transparent,
-                          const Color(0xFF0F0B1E).withValues(alpha: 0.95),
+                          const Color(0xFF0F0B1E).withValues(alpha: 0.75),
                         ],
                       ),
                     ),
@@ -61,7 +61,6 @@ class ProfilePage extends GetView<ProfileController> {
 
                   // -------- Header --------
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       GestureDetector(
                         onTap: () => Get.back(),
@@ -74,6 +73,7 @@ class ProfilePage extends GetView<ProfileController> {
                           child: Icon(Icons.arrow_back, color: Colors.white, size: 18.sp),
                         ),
                       ),
+                      SizedBox(width: 10.w,),
                       Text(
                         'Profile',
                         style: GoogleFonts.poppins(
@@ -82,24 +82,28 @@ class ProfilePage extends GetView<ProfileController> {
                           color: Colors.white,
                         ),
                       ),
+                      Spacer(),
                       Obx(
                             () => controller.isPremiumMember.value
                             ? Container(
                           padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.08),
+                            color: Color(0xFFBFA06D).withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(20.r),
+                            border: Border.all(
+                              width: 0.5,color: Color(0xFFBFA06D).withValues(alpha: 0.3),
+                            )
                           ),
                           child: Row(
                             children: [
-                              Icon(Icons.bolt, size: 12.sp, color: const Color(0xFFE0A11F)),
+                              Icon(Icons.auto_awesome, size: 12.sp, color: const Color(0xFFE0A11F)),
                               SizedBox(width: 4.w),
                               Text(
                                 'PREMIUM MEMBER',
                                 style: GoogleFonts.poppins(
                                   fontSize: 9.sp,
                                   fontWeight: FontWeight.w700,
-                                  color: Colors.white,
+                                  color:const Color(0xFFE0A11F),
                                   letterSpacing: 0.5,
                                 ),
                               ),
@@ -124,8 +128,8 @@ class ProfilePage extends GetView<ProfileController> {
                             border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 2),
                           ),
                           child: ClipOval(
-                            child: Image.asset(
-                              controller.userAvatar,
+                            child: Image.network(
+                              "https://media.sproutsocial.com/uploads/2022/06/profile-picture.jpeg",
                               width: 90.w,
                               height: 90.w,
                               fit: BoxFit.cover,
@@ -189,7 +193,7 @@ class ProfilePage extends GetView<ProfileController> {
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.4),
                       borderRadius: BorderRadius.circular(18.r),
-                      border: Border.all(color: const Color(0xFFE0A11F).withValues(alpha: 0.4)),
+                      border: Border.all(color: const Color(0xFF64D77A).withValues(alpha: 0.4)),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -225,41 +229,57 @@ class ProfilePage extends GetView<ProfileController> {
                   SizedBox(height: 22.h),
 
                   // -------- Menu list --------
-                  _MenuTile(
-                    icon: Icons.person_outline,
-                    title: 'Personal Info',
-                    subtitle: 'Update your personal info',
-                    onTap: controller.onPersonalInfoPressed,
-                  ),
-                  _MenuTile(
-                    icon: Icons.notifications_none,
-                    title: 'Notification Settings',
-                    subtitle: 'Reminders & alerts',
-                    onTap: controller.onNotificationSettingsPressed,
-                  ),
-                  _MenuTile(
-                    icon: Icons.lock_outline,
-                    title: 'Change Password',
-                    subtitle: 'Update & secure your account password',
-                    onTap: controller.onChangePasswordPressed,
-                  ),
-                  _MenuTile(
-                    icon: Icons.help_outline,
-                    title: 'Help & Support',
-                    subtitle: 'Contact us anytime',
-                    onTap: controller.onHelpSupportPressed,
-                  ),
-                  _MenuTile(
-                    icon: Icons.star_border,
-                    title: 'Terms & Conditions',
-                    subtitle: 'Legal & subscription terms',
-                    onTap: controller.onTermsConditionsPressed,
-                  ),
-                  _MenuTile(
-                    icon: Icons.show_chart,
-                    title: 'About Elite Trading',
-                    subtitle: 'Version 1.0.0',
-                    onTap: controller.onAboutPressed,
+                  Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1B1830),
+                      borderRadius: BorderRadius.circular(14.r),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+                    ),
+                    child: Column(
+                      children: [
+                        _MenuTile(
+                          icon: Icons.person_outline,
+                          title: 'Personal Info',
+                          subtitle: 'Update your personal info',
+                          onTap: controller.onPersonalInfoPressed,
+                        ),
+                        Divider(color: Colors.white24, height: 0.5, thickness: 0.5),
+                        _MenuTile(
+                          icon: Icons.notifications_none,
+                          title: 'Notification Settings',
+                          subtitle: 'Reminders & alerts',
+                          onTap: controller.onNotificationSettingsPressed,
+                        ),
+                        Divider(color: Colors.white24, height: 0.5, thickness: 0.5),
+                        _MenuTile(
+                          icon: Icons.lock_outline,
+                          title: 'Change Password',
+                          subtitle: 'Update & secure your account password',
+                          onTap: controller.onChangePasswordPressed,
+                        ),
+                        Divider(color: Colors.white24, height: 0.5, thickness: 0.5),
+                        _MenuTile(
+                          icon: Icons.help_outline,
+                          title: 'Help & Support',
+                          subtitle: 'Contact us anytime',
+                          onTap: controller.onHelpSupportPressed,
+                        ),
+                        Divider(color: Colors.white24, height: 0.5, thickness: 0.5),
+                        _MenuTile(
+                          icon: Icons.star_border,
+                          title: 'Terms & Conditions',
+                          subtitle: 'Legal & subscription terms',
+                          onTap: controller.onTermsConditionsPressed,
+                        ),
+                        Divider(color: Colors.white24, height: 0.5, thickness: 0.5),
+                        _MenuTile(
+                          icon: Icons.show_chart,
+                          title: 'About Elite Trading',
+                          subtitle: 'Version 1.0.0',
+                          onTap: controller.onAboutPressed,
+                        ),
+                      ],
+                    ),
                   ),
 
                   SizedBox(height: 24.h),
@@ -322,14 +342,8 @@ class _MenuTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        margin: EdgeInsets.only(bottom: 12.h),
+      child: Padding(
         padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 14.h),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1B1830),
-          borderRadius: BorderRadius.circular(14.r),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
-        ),
         child: Row(
           children: [
             Container(

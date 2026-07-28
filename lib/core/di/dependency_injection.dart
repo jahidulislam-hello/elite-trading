@@ -1,6 +1,7 @@
 import 'package:get/get.dart';
 import '../../features/Post/presentation/controller/post_controller.dart';
 import '../../features/authentication/presentation/controller/auth_controller.dart';
+import '../../features/bottom_nab_bar/presentation/controller/bottom_nav_controller.dart';
 import '../../features/history/presentation/container/history_container.dart';
 import '../../features/notification/presentation/controller/notification_controller.dart';
 import '../../features/profile/controller/profile_controller.dart';
@@ -36,6 +37,7 @@ class DependencyInjection {
     Get.lazyPut<PostController>(() => PostController(), fenix: true);
     Get.lazyPut<HistoryContainer>(() => HistoryContainer(), fenix: true);
     Get.lazyPut<ProfileController>(() => ProfileController(), fenix: true);
+    Get.lazyPut<BottomNavController>(() => BottomNavController(), fenix: true);
 
 
   }

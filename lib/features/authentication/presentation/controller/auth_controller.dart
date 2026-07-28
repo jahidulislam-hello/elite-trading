@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 
 class AuthController extends GetxController {
   final formKey = GlobalKey<FormState>();
+  final verificationFormKey = GlobalKey<FormState>();
   final TextEditingController emailController = TextEditingController();
 
   final RxBool isLoading = false.obs;
@@ -66,10 +67,11 @@ class AuthController extends GetxController {
 
   //------------------reset Password Screen----------------------------
   final TextEditingController resetPass = TextEditingController();
+  final resetPassFormKey = GlobalKey<FormState>();
   final TextEditingController resetConformPass = TextEditingController();
 
-  void resetPassword(GlobalKey<FormState> resetFormKey) {
-    if (resetFormKey.currentState!.validate()) {
+  void resetPassword() {
+    if (resetPassFormKey.currentState!.validate()) {
       Get.toNamed(AppRoutes.signInScreen);
     }
   }

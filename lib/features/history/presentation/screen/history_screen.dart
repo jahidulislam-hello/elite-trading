@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/routes/app_routes.dart';
 import '../../../../core/utils/customeTextField/custom_text_field.dart';
 import '../../data/model/history_signal_model.dart';
 import '../container/history_container.dart';
@@ -61,16 +62,21 @@ class HistoryScreen extends GetView<HistoryContainer> {
                         ),
                       ),
                       SizedBox(width: 12.w),
-                      ClipOval(
-                        child:  Image.network(
-                          "https://media.sproutsocial.com/uploads/2022/06/profile-picture.jpeg",
-                          width: 38.w,
-                          height: 38.w,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
+                      GestureDetector(
+                        onTap: (){
+                          Get.toNamed(AppRoutes.profilePage);
+                        },
+                        child: ClipOval(
+                          child: Image.network(
+                            "https://media.sproutsocial.com/uploads/2022/06/profile-picture.jpeg",
                             width: 38.w,
                             height: 38.w,
-                            color: const Color(0xFF7B1FE0),
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              width: 38.w,
+                              height: 38.w,
+                              color: const Color(0xFF7B1FE0),
+                            ),
                           ),
                         ),
                       ),
@@ -97,10 +103,10 @@ class HistoryScreen extends GetView<HistoryContainer> {
                         ),
                         SizedBox(height: 14.h),
                         SizedBox(
-                          height: 44.h,
+                          height: 49.h,
                           child: Obx(
                                 () => Row(
-                              children: [
+                                                              children: [
                                 _StatItem(
                                   value: '${controller.wins.value}',
                                   label: 'Wins',
@@ -124,8 +130,8 @@ class HistoryScreen extends GetView<HistoryContainer> {
                                   label: 'Win Rate',
                                   color: const Color(0xFFE0A11F),
                                 ),
-                              ],
-                            ),
+                                                              ],
+                                                            ),
                           ),
                         ),
                       ],

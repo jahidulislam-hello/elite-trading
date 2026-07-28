@@ -1,3 +1,4 @@
+import 'package:elite_trading/core/routes/app_routes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -54,49 +55,54 @@ class SignalScreen extends GetView<SignalController> {
                       ),
                       Row(
                         children: [
-                          Obx(
-                                () => Stack(
-                              clipBehavior: Clip.none,
-                              children: [
-                                Container(
-                                  padding: EdgeInsets.all(10.w),
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xFF1B1830),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Icon(
-                                    Icons.notifications_outlined,
-                                    size: 18.sp,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                                if (controller.hasNotification.value)
-                                  Positioned(
-                                    top: 0.h,
-                                    right: 0.w,
-                                    child: Container(
-                                      width: 9.w,
-                                      height: 9.w,
-                                      decoration: const BoxDecoration(
-                                        color: Colors.redAccent,
-                                        shape: BoxShape.circle,
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
+                          // Obx(
+                          //       () => Stack(
+                          //     clipBehavior: Clip.none,
+                          //     children: [
+                          //       Container(
+                          //         padding: EdgeInsets.all(10.w),
+                          //         decoration: const BoxDecoration(
+                          //           color: Color(0xFF1B1830),
+                          //           shape: BoxShape.circle,
+                          //         ),
+                          //         child: Icon(
+                          //           Icons.notifications_outlined,
+                          //           size: 18.sp,
+                          //           color: Colors.white,
+                          //         ),
+                          //       ),
+                          //       if (controller.hasNotification.value)
+                          //         Positioned(
+                          //           top: 0.h,
+                          //           right: 0.w,
+                          //           child: Container(
+                          //             width: 9.w,
+                          //             height: 9.w,
+                          //             decoration: const BoxDecoration(
+                          //               color: Colors.redAccent,
+                          //               shape: BoxShape.circle,
+                          //             ),
+                          //           ),
+                          //         ),
+                          //     ],
+                          //   ),
+                          // ),
                           SizedBox(width: 12.w),
-                          ClipOval(
-                            child: Image.network(
-                              "https://media.sproutsocial.com/uploads/2022/06/profile-picture.jpeg",
-                              width: 38.w,
-                              height: 38.w,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
+                          GestureDetector(
+                            onTap: (){
+                              Get.toNamed(AppRoutes.profilePage);
+                            },
+                            child: ClipOval(
+                              child: Image.network(
+                                "https://media.sproutsocial.com/uploads/2022/06/profile-picture.jpeg",
                                 width: 38.w,
                                 height: 38.w,
-                                color: const Color(0xFF7B1FE0),
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Container(
+                                  width: 38.w,
+                                  height: 38.w,
+                                  color: const Color(0xFF7B1FE0),
+                                ),
                               ),
                             ),
                           ),

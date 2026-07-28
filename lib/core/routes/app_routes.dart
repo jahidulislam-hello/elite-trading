@@ -41,5 +41,7 @@ abstract class AppRoutes {
   //---------------------Subscription----------------------------
   static const String profilePage = '/profilePage';
 
+  //---------------------Bottom Nav----------------------------
+  static const String bottomNavScreen = '/bottomNavScreen';
 
 }

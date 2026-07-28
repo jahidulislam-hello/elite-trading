@@ -26,6 +26,12 @@ class SignalModel {
   final String riskReward;
   final String timeAgo;
 
+  final String tradeType;
+  final String publishedDate;
+  final double? previousClose;
+  final double? openingPrice;
+  final double? change24hPercent;
+
   const SignalModel({
     required this.id,
     required this.pair,
@@ -39,5 +45,10 @@ class SignalModel {
     required this.takeProfits,
     required this.riskReward,
     required this.timeAgo,
+    this.tradeType = 'Day Trade',
+    this.publishedDate = '',
+    this.previousClose,
+    this.openingPrice,
+    this.change24hPercent,
   });
 }

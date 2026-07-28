@@ -1,5 +1,4 @@
 import 'package:elite_trading/core/routes/app_pages.dart';
-import 'package:elite_trading/core/routes/app_routes.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -40,7 +39,7 @@ class MyApp extends StatelessWidget {
           ),
           defaultTransition: Transition.rightToLeft,
           transitionDuration: const Duration(milliseconds: 250),
-          initialRoute:AppRoutes.profilePage,//initialRoute,
+          initialRoute:initialRoute,
           getPages: AppPages.routes,
         );
       },

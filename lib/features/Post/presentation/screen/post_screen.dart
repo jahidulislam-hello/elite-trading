@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/routes/app_routes.dart';
 import '../../data/model/post_data.dart';
 import '../controller/post_controller.dart';
 
@@ -63,16 +64,21 @@ class PostScreen extends GetView<PostController> {
                           ),
                         ),
                         SizedBox(width: 12.w),
-                        ClipOval(
-                          child:  Image.network(
-                            "https://media.sproutsocial.com/uploads/2022/06/profile-picture.jpeg",
-                            width: 38.w,
-                            height: 38.w,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(
+                        GestureDetector(
+                          onTap: (){
+                            Get.toNamed(AppRoutes.profilePage);
+                          },
+                          child: ClipOval(
+                            child: Image.network(
+                              "https://media.sproutsocial.com/uploads/2022/06/profile-picture.jpeg",
                               width: 38.w,
                               height: 38.w,
-                              color: const Color(0xFF7B1FE0),
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Container(
+                                width: 38.w,
+                                height: 38.w,
+                                color: const Color(0xFF7B1FE0),
+                              ),
                             ),
                           ),
                         ),

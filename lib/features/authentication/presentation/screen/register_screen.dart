@@ -13,13 +13,12 @@ class RegisterScreen extends GetView<AuthController> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFF0F0B1E),
       resizeToAvoidBottomInset: true,
       body: Stack(
         children: [
-          Container(
-            height: MediaQuery.of(context).size.height,
-            width:  MediaQuery.of(context).size.width,
-            child:Image.asset(
+          Positioned.fill(
+            child: Image.asset(
               "asset/image/onboarding/background.png",
               fit: BoxFit.cover,
             ),

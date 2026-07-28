@@ -6,6 +6,7 @@ import '../../features/authentication/presentation/screen/register_screen.dart';
 import '../../features/authentication/presentation/screen/reset_pass_screen.dart';
 import '../../features/authentication/presentation/screen/sign_in_screen.dart';
 import '../../features/authentication/presentation/screen/verification_screen.dart';
+import '../../features/bottom_nab_bar/presentation/screen/bottom_nav_screen.dart';
 import '../../features/history/presentation/screen/history_screen.dart';
 import '../../features/notification/presentation/screen/notification_screen.dart';
 import '../../features/onboarding/presentation/screen/onbording_one.dart';
@@ -128,6 +129,12 @@ abstract class AppPages {
     GetPage(
       name: AppRoutes.profilePage,
       page: () => const ProfilePage(),
+    ),
+
+    //------------------------------Bottom Nav-------------------
+    GetPage(
+      name: AppRoutes.bottomNavScreen,
+      page: () => const BottomNavScreen(),
     ),
 
 

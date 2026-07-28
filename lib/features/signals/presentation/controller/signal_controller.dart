@@ -4,7 +4,7 @@ import 'package:get/get.dart';
 import '../../data/model/market_hour_model.dart';
 import '../../data/model/take_profile_model.dart';
 import '../screen/all_singnal_screen.dart';
-
+import '../screen/signal_details_screen.dart';
 
 class SignalController extends GetxController {
   //---------------- Greeting ----------------
@@ -50,6 +50,33 @@ class SignalController extends GetxController {
 
   void onSeeAllSignalsPressed() => Get.to(() => const AllSingnalScreen());
 
+  //================================================================
+  // SIGNAL DETAIL PAGE STATE
+  //================================================================
+  final Rx<SignalModel?> currentSignal = Rx<SignalModel?>(null);
+  final RxBool isFavorite = false.obs;
+  final RxInt selectedTabIndex = 0.obs; // 0 = Summary, 1 = Details
+  final RxString selectedTimeframe = '1W'.obs;
+  final List<String> timeframes = const ['1H', '24H', '3D', '1W', '1M', '6M'];
+
+  void openSignalDetail(SignalModel signal) {
+    currentSignal.value = signal;
+    isFavorite.value = false;
+    selectedTabIndex.value = 0;
+    selectedTimeframe.value = '1W';
+    Get.to(() => const SignalDetailScreen());
+  }
+
+  void toggleFavorite() => isFavorite.value = !isFavorite.value;
+  void selectDetailTab(int index) => selectedTabIndex.value = index;
+  void selectTimeframe(String tf) => selectedTimeframe.value = tf;
+
+  void onEnableAlertsPressed() {
+    final signal = currentSignal.value;
+    if (signal == null) return;
+    Get.snackbar('Alerts Enabled', 'You will be notified about ${signal.pair} updates');
+  }
+
   @override
   void onInit() {
     super.onInit();
@@ -75,6 +102,11 @@ class SignalController extends GetxController {
         ],
         riskReward: '1:2.0',
         timeAgo: '2h ago',
+        tradeType: 'Swing Trade',
+        publishedDate: 'Jul 23 · 09:15',
+        previousClose: 67200.00,
+        openingPrice: 67420.00,
+        change24hPercent: 2.35,
       ),
       const SignalModel(
         id: '2',
@@ -93,6 +125,11 @@ class SignalController extends GetxController {
         ],
         riskReward: '1:2.0',
         timeAgo: '2h ago',
+        tradeType: 'Day Trade',
+        publishedDate: 'Jul 23 · 11:40',
+        previousClose: 67900.00,
+        openingPrice: 67650.00,
+        change24hPercent: -1.10,
       ),
       const SignalModel(
         id: '3',
@@ -111,6 +148,11 @@ class SignalController extends GetxController {
         ],
         riskReward: '1:2.0',
         timeAgo: '3h ago',
+        tradeType: 'Swing Trade',
+        publishedDate: 'Jul 23 · 08:05',
+        previousClose: 1.0830,
+        openingPrice: 1.0845,
+        change24hPercent: 0.62,
       ),
       const SignalModel(
         id: '4',
@@ -129,6 +171,11 @@ class SignalController extends GetxController {
         ],
         riskReward: '1:2.5',
         timeAgo: '5h ago',
+        tradeType: 'Swing Trade',
+        publishedDate: 'Jul 23 · 06:50',
+        previousClose: 2378.00,
+        openingPrice: 2382.00,
+        change24hPercent: 1.18,
       ),
     ]);
   }

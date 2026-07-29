@@ -11,24 +11,24 @@ class SignalCandleChart extends StatelessWidget {
   const SignalCandleChart({
     super.key,
     required this.signal,
-    this.height = 200,
+    this.height = 300,
   });
 
-  // -------- Figma color tokens --------
-  static const Color _successColor = Color(0xFF22C55E); // Semantic-Success (TP)
-  static const Color _activeColor = Color(0xFF7C3AED); // Signal-Active (Entry)
-  static const Color _errorColor = Color(0xFFEF4444); // Semantic-Error (SL)
+  static const Color _successColor = Color(0xFF22C55E);
+  static const Color _activeColor = Color(0xFF7C3AED);
+  static const Color _errorColor = Color(0xFFEF4444);
+
+  // Left padding reserved for price labels
+  static const double _labelWidth = 90.0;
 
   @override
   Widget build(BuildContext context) {
-    // -------- Compute the same price → y mapping the painter uses --------
     final highestTp = signal.takeProfits.isNotEmpty
         ? signal.takeProfits.map((t) => t.price).reduce(max)
         : signal.entryPrice * 1.05;
     final lowestVal = min(signal.stopLoss, signal.entryPrice * 0.97);
     final highestVal = max(highestTp, signal.entryPrice * 1.03);
     final range = (highestVal - lowestVal) == 0 ? 1.0 : (highestVal - lowestVal);
-
     final chartHeight = height.h;
 
     double yFor(double price) {
@@ -36,7 +36,7 @@ class SignalCandleChart extends StatelessWidget {
       return chartHeight - (t * chartHeight);
     }
 
-    // -------- Deterministic last-candle close (mirrors painter logic) for tooltip placement --------
+    // Simulate last close for tooltip
     final rnd = Random(signal.id.hashCode);
     const candleCount = 26;
     double lastClose = signal.entryPrice * 0.985;
@@ -45,14 +45,35 @@ class SignalCandleChart extends StatelessWidget {
       final move = (rnd.nextDouble() - 0.42) * range * 0.05;
       lastClose = (open + move).clamp(lowestVal, highestVal);
     }
-    final candleWidth = 1.0; // fractional width placeholder, real width computed in LayoutBuilder below
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final chartWidth = constraints.maxWidth;
-        final realCandleWidth = chartWidth / candleCount;
-        final tooltipCx = (candleCount * 0.62) * realCandleWidth;
-        final tooltipCy = yFor(lastClose) - 26.h;
+        final totalWidth = constraints.maxWidth;
+        final chartAreaWidth = totalWidth - _labelWidth.w;
+        final realCandleWidth = chartAreaWidth / candleCount;
+        final tooltipCx = _labelWidth.w + (candleCount * 0.62) * realCandleWidth;
+        final tooltipCy = yFor(lastClose) - 28.h;
+
+        // Build all level entries
+        final levels = <_LevelEntry>[
+          _LevelEntry(
+            label: 'SL \$${signal.stopLoss.toStringAsFixed(0)}',
+            price: signal.stopLoss,
+            color: _errorColor,
+          ),
+          _LevelEntry(
+            label: 'ENTRY \$${signal.entryPrice.toStringAsFixed(0)}',
+            price: signal.entryPrice,
+            color: _activeColor,
+          ),
+          ...signal.takeProfits.map(
+            (tp) => _LevelEntry(
+              label: '${tp.label} \$${tp.price.toStringAsFixed(0)}',
+              price: tp.price,
+              color: _successColor,
+            ),
+          ),
+        ];
 
         return SizedBox(
           width: double.infinity,
@@ -60,99 +81,76 @@ class SignalCandleChart extends StatelessWidget {
           child: Stack(
             clipBehavior: Clip.none,
             children: [
-              // -------- Candles (painted) --------
-              Positioned.fill(
+              // Candles drawn only in the right area
+              Positioned(
+                left: _labelWidth.w,
+                top: 0,
+                width: chartAreaWidth,
+                height: chartHeight,
                 child: CustomPaint(
                   painter: _CandleChartPainter(signal: signal),
                 ),
               ),
 
-              // -------- Take Profit labels --------
-              ...signal.takeProfits.map((tp) {
-                final ly = yFor(tp.price);
+              // Level labels + dashed lines spanning full width
+              ...levels.map((lvl) {
+                final ly = yFor(lvl.price).clamp(8.0, chartHeight - 14.h);
                 return Positioned(
-                  left: -1.5.w,
-                  top: (ly - 10.h).clamp(0.0, chartHeight - 12.h),
-                  child: SizedBox(
-                    width: 60.w,
-                    child: Text(
-                      '${tp.label} \$${tp.price.toStringAsFixed(0)}',
-                      style: GoogleFonts.poppins(
-                        color: _successColor,
-                        fontSize: 9.sp,
-                        fontWeight: FontWeight.w600,
-                        height: 1.20,
+                  left: 0,
+                  top: ly - 9.h,
+                  width: totalWidth,
+                  child: Row(
+                    children: [
+                      // Label on the left
+                      SizedBox(
+                        width: _labelWidth.w,
+                        child: Text(
+                          lvl.label,
+                          style: GoogleFonts.poppins(
+                            color: lvl.color,
+                            fontSize: 9.sp,
+                            fontWeight: FontWeight.w600,
+                            height: 1.2,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                    ),
+                      // Dashed line from label to end
+                      Expanded(
+                        child: CustomPaint(
+                          size: Size(double.infinity, 1),
+                          painter: _DashedLinePainter(color: lvl.color),
+                        ),
+                      ),
+                    ],
                   ),
                 );
               }),
 
-              // -------- Entry label --------
+              // Floating price tooltip
               Positioned(
-                left: -2.w,
-                top: (yFor(signal.entryPrice) - 10.h).clamp(0.0, chartHeight - 12.h),
-                child: SizedBox(
-                  width: 70.w,
-                  child: Text(
-                    'ENTRY \$${signal.entryPrice.toStringAsFixed(0)}',
-                    style: GoogleFonts.poppins(
-                      color: _activeColor,
-                      fontSize: 9.sp,
-                      fontWeight: FontWeight.w600,
-                      height: 1.20,
-                    ),
-                  ),
-                ),
-              ),
-
-              // -------- Stop Loss label --------
-              Positioned(
-                left: -2.w,
-                top: (yFor(signal.stopLoss) - 10.h).clamp(0.0, chartHeight - 12.h),
-                child: SizedBox(
-                  width: 60.w,
-                  child: Text(
-                    'SL \$${signal.stopLoss.toStringAsFixed(0)}',
-                    style: GoogleFonts.poppins(
-                      color: _errorColor,
-                      fontSize: 9.sp,
-                      fontWeight: FontWeight.w600,
-                      height: 1.20,
-                    ),
-                  ),
-                ),
-              ),
-
-              // -------- Floating price tooltip --------
-              Positioned(
-                left: tooltipCx - 34.w,
-                top: tooltipCy,
+                left: (tooltipCx - 40.w).clamp(0.0, totalWidth - 80.w),
+                top: tooltipCy.clamp(0.0, chartHeight - 24.h),
                 child: Container(
-                  width: 68.w,
-                  height: 20.h,
-                  alignment: Alignment.center,
+                  padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
                   decoration: BoxDecoration(
                     color: Colors.black,
                     borderRadius: BorderRadius.circular(10.r),
                     boxShadow: const [
                       BoxShadow(
-                        color: Color(0x66212222),
-                        blurRadius: 24,
-                        offset: Offset(0, 8),
-                        spreadRadius: 0,
+                        color: Color(0x55000000),
+                        blurRadius: 16,
+                        offset: Offset(0, 4),
                       ),
                     ],
                   ),
                   child: Text(
                     '\$${lastClose.toStringAsFixed(2)}',
-                    textAlign: TextAlign.center,
                     style: GoogleFonts.poppins(
                       color: Colors.white,
                       fontSize: 12.sp,
-                      fontWeight: FontWeight.w600,
-                      height: 1.20,
-                      letterSpacing: 0.10,
+                      fontWeight: FontWeight.w700,
+                      height: 1.2,
                     ),
                   ),
                 ),
@@ -163,6 +161,34 @@ class SignalCandleChart extends StatelessWidget {
       },
     );
   }
+}
+
+class _LevelEntry {
+  final String label;
+  final double price;
+  final Color color;
+  const _LevelEntry({required this.label, required this.price, required this.color});
+}
+
+// Draws only horizontal dashed line (no labels)
+class _DashedLinePainter extends CustomPainter {
+  final Color color;
+  const _DashedLinePainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color.withValues(alpha: 0.55)
+      ..strokeWidth = 1.0;
+    double x = 0;
+    while (x < size.width) {
+      canvas.drawLine(Offset(x, 0), Offset(x + 5, 0), paint);
+      x += 9;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DashedLinePainter old) => old.color != color;
 }
 
 class _CandleChartPainter extends CustomPainter {
@@ -186,35 +212,15 @@ class _CandleChartPainter extends CustomPainter {
       return size.height - (t * size.height);
     }
 
-    // -------- Dashed level lines only (labels are drawn as widgets above) --------
-    final levels = <(double price, Color color)>[
-      (signal.stopLoss, const Color(0xFFEF4444)),
-      (signal.entryPrice, const Color(0xFF7C3AED)),
-      for (final tp in signal.takeProfits) (tp.price, const Color(0xFF22C55E)),
-    ];
-
-    for (final level in levels) {
-      final ly = y(level.$1);
-      final dashPaint = Paint()
-        ..color = level.$2.withValues(alpha: 0.5)
-        ..strokeWidth = 1;
-      double dashX = 0;
-      while (dashX < size.width) {
-        canvas.drawLine(Offset(dashX, ly), Offset(dashX + 4, ly), dashPaint);
-        dashX += 8;
-      }
-    }
-
-    // -------- Candles --------
     final candleWidth = size.width / candleCount;
     double lastClose = signal.entryPrice * 0.985;
 
     for (int i = 0; i < candleCount; i++) {
       final open = lastClose;
-      final move = (rnd.nextDouble() - 0.42) * range * 0.05;
+      final move = (rnd.nextDouble() - 0.42) * range * 0.055;
       final close = (open + move).clamp(lowestVal, highestVal);
-      final high = max(open, close) + rnd.nextDouble() * range * 0.015;
-      final low = min(open, close) - rnd.nextDouble() * range * 0.015;
+      final high = max(open, close) + rnd.nextDouble() * range * 0.018;
+      final low = min(open, close) - rnd.nextDouble() * range * 0.018;
       lastClose = close;
 
       final isUp = close >= open;
@@ -227,17 +233,17 @@ class _CandleChartPainter extends CustomPainter {
         Offset(cx, y(low)),
         Paint()
           ..color = color
-          ..strokeWidth = 1.2,
+          ..strokeWidth = 1.5,
       );
 
       // body
       final bodyTop = y(max(open, close));
       final bodyBottom = y(min(open, close));
       final bodyRect = Rect.fromLTRB(
-        cx - candleWidth * 0.28,
+        cx - candleWidth * 0.30,
         bodyTop,
-        cx + candleWidth * 0.28,
-        bodyBottom == bodyTop ? bodyTop + 1.5 : bodyBottom,
+        cx + candleWidth * 0.30,
+        bodyBottom == bodyTop ? bodyTop + 2.0 : bodyBottom,
       );
       canvas.drawRect(bodyRect, Paint()..color = color);
     }

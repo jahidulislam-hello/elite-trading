@@ -12,15 +12,15 @@ class ChangePasswordSheet extends GetView<ProfileController> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-      ),
+    return RepaintBoundary(
       child: ClipRRect(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28.r)),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
           child: Container(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.85,
+            ),
             padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 24.h),
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -41,117 +41,120 @@ class ChangePasswordSheet extends GetView<ProfileController> {
                 ),
               ],
             ),
-            child: Form(
-              key: controller.formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Drag handle
-                  Center(
-                    child: Container(
-                      width: 40.w,
-                      height: 4.h,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.24),
-                        borderRadius: BorderRadius.circular(10.r),
+            child: SingleChildScrollView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              child: Form(
+                key: controller.formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Drag handle
+                    Center(
+                      child: Container(
+                        width: 40.w,
+                        height: 4.h,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.24),
+                          borderRadius: BorderRadius.circular(10.r),
+                        ),
                       ),
                     ),
-                  ),
-                  SizedBox(height: 18.h),
-                  Center(
-                    child: Text(
-                      'Password Change',
-                      style: GoogleFonts.poppins(
-                        fontSize: 18.sp,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
+                    SizedBox(height: 18.h),
+                    Center(
+                      child: Text(
+                        'Password Change',
+                        style: GoogleFonts.poppins(
+                          fontSize: 18.sp,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
-                  ),
-                  SizedBox(height: 22.h),
+                    SizedBox(height: 22.h),
 
-                  CustomTextField(
-                    controller: controller.currentPasswordController,
-                    hintText: 'Current password',
-                    isPassword: true,
-                    filColor: Colors.white.withValues(alpha: 0.06),
-                    hinTextColor: Colors.white70,
-                    borderColor: Colors.white.withValues(alpha: 0.1),
-                    borderRadius: 16,
-                    contentPaddingVertical: 16,
-                    iconColor: const Color(0xFF8E8A9E),
-                    prefixIcon: const Icon(Icons.vpn_key_outlined),
-                  ),
+                    CustomTextField(
+                      controller: controller.currentPasswordController,
+                      hintText: 'Current password',
+                      isPassword: true,
+                      filColor: Colors.white.withValues(alpha: 0.06),
+                      hinTextColor: Colors.white70,
+                      borderColor: Colors.white.withValues(alpha: 0.1),
+                      borderRadius: 16,
+                      contentPaddingVertical: 16,
+                      iconColor: const Color(0xFF8E8A9E),
+                      prefixIcon: const Icon(Icons.vpn_key_outlined),
+                    ),
 
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: GestureDetector(
-                      onTap: controller.onForgotPasswordPressed,
-                      child: Padding(
-                        padding: EdgeInsets.only(bottom: 16.h),
-                        child: Text(
-                          'Forgot Password?',
-                          style: GoogleFonts.poppins(
-                            fontSize: 12.sp,
-                            fontWeight: FontWeight.w500,
-                            color: const Color(0xFF9B6BFF),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: GestureDetector(
+                        onTap: controller.onForgotPasswordPressed,
+                        child: Padding(
+                          padding: EdgeInsets.only(bottom: 16.h),
+                          child: Text(
+                            'Forgot Password?',
+                            style: GoogleFonts.poppins(
+                              fontSize: 12.sp,
+                              fontWeight: FontWeight.w500,
+                              color: const Color(0xFF9B6BFF),
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
 
-                  CustomTextField(
-                    controller: controller.newPasswordController,
-                    hintText: 'Enter New password',
-                    isPassword: true,
-                    filColor: Colors.white.withValues(alpha: 0.06),
-                    hinTextColor: Colors.white70,
-                    borderColor: Colors.white.withValues(alpha: 0.1),
-                    borderRadius: 16,
-                    contentPaddingVertical: 16,
-                    iconColor: const Color(0xFF8E8A9E),
-                    prefixIcon: const Icon(Icons.vpn_key_outlined),
-                  ),
-
-                  CustomTextField(
-                    controller: controller.confirmPasswordController,
-                    hintText: 'Confirm New password',
-                    isPassword: true,
-                    filColor: Colors.white.withValues(alpha: 0.06),
-                    hinTextColor: Colors.white70,
-                    borderColor: Colors.white.withValues(alpha: 0.1),
-                    borderRadius: 16,
-                    contentPaddingVertical: 16,
-                    iconColor: const Color(0xFF8E8A9E),
-                    prefixIcon: const Icon(Icons.vpn_key_outlined),
-                    validator:(value) {
-                      if (value == null || value.isEmpty) {
-                      return "Please enter your confirm password";
-                      }
-
-                      if (value != controller.newPasswordController.text) {
-                      return "Password and confirm password do not match";
-                      }
-
-                      return null;
-                    },
-                  ),
-
-                  SizedBox(height: 8.h),
-
-                  Obx(
-                        () => CustomElevatedButton(
-                      text: 'Save Change',
-                      onTap: controller.onSaveChangePressed,
-                      isLoading: controller.isSavingPassword.value,
-                      backgroundColor: const Color(0xFF8A2BE2),
-                      height: 54.h,
-                      borderRadius: 16.r,
+                    CustomTextField(
+                      controller: controller.newPasswordController,
+                      hintText: 'Enter New password',
+                      isPassword: true,
+                      filColor: Colors.white.withValues(alpha: 0.06),
+                      hinTextColor: Colors.white70,
+                      borderColor: Colors.white.withValues(alpha: 0.1),
+                      borderRadius: 16,
+                      contentPaddingVertical: 16,
+                      iconColor: const Color(0xFF8E8A9E),
+                      prefixIcon: const Icon(Icons.vpn_key_outlined),
                     ),
-                  ),
-                ],
+
+                    CustomTextField(
+                      controller: controller.confirmPasswordController,
+                      hintText: 'Confirm New password',
+                      isPassword: true,
+                      filColor: Colors.white.withValues(alpha: 0.06),
+                      hinTextColor: Colors.white70,
+                      borderColor: Colors.white.withValues(alpha: 0.1),
+                      borderRadius: 16,
+                      contentPaddingVertical: 16,
+                      iconColor: const Color(0xFF8E8A9E),
+                      prefixIcon: const Icon(Icons.vpn_key_outlined),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return "Please enter your confirm password";
+                        }
+
+                        if (value != controller.newPasswordController.text) {
+                          return "Password and confirm password do not match";
+                        }
+
+                        return null;
+                      },
+                    ),
+
+                    SizedBox(height: 8.h),
+
+                    Obx(
+                          () => CustomElevatedButton(
+                        text: 'Save Change',
+                        onTap: controller.onSaveChangePressed,
+                        isLoading: controller.isSavingPassword.value,
+                        backgroundColor: const Color(0xFF8A2BE2),
+                        height: 54.h,
+                        borderRadius: 16.r,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

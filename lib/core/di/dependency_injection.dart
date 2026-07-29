@@ -25,9 +25,7 @@ class DependencyInjection {
     await storageService.init();
     Get.put<StorageService>(storageService, permanent: true);
 
-    //---------------------Onboarding----------------------------
-    Get.lazyPut<AuthController>(() => AuthController(), fenix: true);
-
+    Get.put<AuthController>(AuthController(), permanent: true);
     //---------------------Subscription----------------------------
     Get.lazyPut<SubscriptionsController>(() => SubscriptionsController(), fenix: true);
 

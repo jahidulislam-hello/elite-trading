@@ -15,6 +15,7 @@ class CommentScreen extends GetView<PostController> {
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
+      backgroundColor: const Color(0xFF0F0B1E),
       body: Stack(
         children: [
           Container(

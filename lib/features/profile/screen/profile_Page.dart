@@ -141,22 +141,22 @@ class ProfilePage extends GetView<ProfileController> {
                             ),
                           ),
                         ),
-                        Positioned(
-                          bottom: 0,
-                          right: 0,
-                          child: GestureDetector(
-                            onTap: controller.onEditAvatarPressed,
-                            child: Container(
-                              padding: EdgeInsets.all(6.w),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF2ECC71),
-                                shape: BoxShape.circle,
-                                border: Border.all(color: const Color(0xFF0F0B1E), width: 2),
-                              ),
-                              child: Icon(Icons.edit, size: 12.sp, color: Colors.white),
-                            ),
-                          ),
-                        ),
+                        // Positioned(
+                        //   bottom: 0,
+                        //   right: 0,
+                        //   child: GestureDetector(
+                        //     onTap: controller.onEditAvatarPressed,
+                        //     child: Container(
+                        //       padding: EdgeInsets.all(6.w),
+                        //       decoration: BoxDecoration(
+                        //         color: const Color(0xFF2ECC71),
+                        //         shape: BoxShape.circle,
+                        //         border: Border.all(color: const Color(0xFF0F0B1E), width: 2),
+                        //       ),
+                        //       child: Icon(Icons.edit, size: 12.sp, color: Colors.white),
+                        //     ),
+                        //   ),
+                        // ),
                       ],
                     ),
                   ),
@@ -341,6 +341,7 @@ class _MenuTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      behavior: HitTestBehavior.opaque, // <-- এই লাইনটা যোগ করো
       onTap: onTap,
       child: Padding(
         padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 14.h),

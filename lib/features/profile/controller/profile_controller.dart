@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:elite_trading/core/routes/app_routes.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -16,6 +17,15 @@ class ProfileController extends GetxController {
   final String userEmail = 'alex.kim@elitetrading.com';
   final RxBool isPremiumMember = true.obs;
 
+  //---------------- Avatar (Personal Info screen) ----------------
+  final String networkAvatarUrl =
+      'https://media.sproutsocial.com/uploads/2022/06/profile-picture.jpeg';
+  final Rx<File?> pickedAvatarFile = Rx<File?>(null);
+
+  void onAvatarSelected(File file) {
+    pickedAvatarFile.value = file;
+  }
+
   //---------------- Plan info ----------------
   final String planLabel = 'PREMIUM PLAN';
   final String planStatus = 'Active until Dec 31, 2026';
@@ -32,6 +42,7 @@ class ProfileController extends GetxController {
       const ChangePasswordSheet(),
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
+      enableDrag: true,
     );
   }
 
@@ -65,7 +76,7 @@ class ProfileController extends GetxController {
   void onSavePersonalInfoPressed() async {
     if (personalInfoFormKey.currentState!.validate()) {
       isSavingPersonalInfo.value = true;
-      // TODO: call update-profile API
+      // TODO: call update-profile API (pickedAvatarFile.value থাকলে সেটাও পাঠাও)
       await Future.delayed(const Duration(milliseconds: 600));
       isSavingPersonalInfo.value = false;
       Get.back();
@@ -99,12 +110,6 @@ class ProfileController extends GetxController {
     return params.entries
         .map((e) => '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}')
         .join('&');
-  }
-
-  //---------------- Avatar edit ----------------
-  void onEditAvatarPressed() {
-    print("Edit avatar tapped");
-    // TODO: image picker
   }
 
   //---------------- Menu actions ----------------

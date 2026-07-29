@@ -26,12 +26,8 @@ class AuthController extends GetxController {
 
   void onRegisterPressed() {
     if (registerFormKey.currentState!.validate()) {
-      if (registerPasswordController.text != confirmPasswordController.text) {
-       Get.offAllNamed(AppRoutes.subscripFirstPage);
-      }
       isRegisterLoading.value = true;
-      print("Register: ${registerEmailController.text}");
-      // TODO: call register API
+      Get.offAllNamed(AppRoutes.subscripFirstPage);
       isRegisterLoading.value = false;
     }
   }

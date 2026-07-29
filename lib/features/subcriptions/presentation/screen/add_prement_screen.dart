@@ -15,6 +15,7 @@ class AddPrementScreen extends GetView<SubscriptionsController> {
   Widget build(BuildContext context) {
     return Scaffold(
       resizeToAvoidBottomInset: true,
+      backgroundColor: const Color(0xFF0F0B1E),
       body: Stack(
         children: [
           Positioned.fill(

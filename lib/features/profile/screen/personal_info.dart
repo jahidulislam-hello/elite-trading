@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/utils/customeTextField/custom_text_field.dart';
 import '../controller/profile_controller.dart';
+import '../widget/profile_avatar_widget.dart';
 
 class PersonalInfo extends GetView<ProfileController> {
   const PersonalInfo({super.key});
@@ -58,52 +59,9 @@ class PersonalInfo extends GetView<ProfileController> {
 
                     // -------- Avatar with camera + add badge --------
                     Center(
-                      child: Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          Container(
-                            width: 84.w,
-                            height: 84.w,
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [Color(0xFF3A2E63), Color(0xFF241B3D)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-                            ),
-                            child: ClipOval(
-                              child: Image.network(
-                                "https://media.sproutsocial.com/uploads/2022/06/profile-picture.jpeg",
-                                width: 90.w,
-                                height: 90.w,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Container(
-                                  width: 90.w,
-                                  height: 90.w,
-                                  color: const Color(0xFF7B1FE0),
-                                ),
-                              ),
-                            ),
-                          ),
-                          Positioned(
-                            bottom: -2.h,
-                            right: -2.w,
-                            child: GestureDetector(
-                              onTap: controller.onEditAvatarPressed,
-                              child: Container(
-                                padding: EdgeInsets.all(6.w),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF2F6BFF),
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: const Color(0xFF0F0B1E), width: 2),
-                                ),
-                                child: Icon(Icons.add, size: 14.sp, color: Colors.black,fontWeight: FontWeight.bold,),
-                              ),
-                            ),
-                          ),
-                        ],
+                      child: ProfileAvatarWidget(
+                        networkImageUrl: controller.networkAvatarUrl,
+                        onImagePicked: controller.onAvatarSelected,
                       ),
                     ),
 

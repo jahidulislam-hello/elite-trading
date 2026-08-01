@@ -8,7 +8,8 @@ import '../controller/auth_controller.dart';
 import '../widget/Elevatedbutton.dart';
 
 class SignInScreen extends GetView<AuthController> {
-  const SignInScreen({super.key});
+  SignInScreen({super.key});
+  final signInFormKey = GlobalKey<FormState>();
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +29,7 @@ class SignInScreen extends GetView<AuthController> {
             child: SingleChildScrollView(
               padding: EdgeInsets.symmetric(horizontal: 20.w),
               child: Form(
-                key: controller.signInFormKey,
+                key: signInFormKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -81,7 +82,7 @@ class SignInScreen extends GetView<AuthController> {
                         ),
                         GestureDetector(
                           onTap: () {
-                            Get.offNamed(AppRoutes.registerScreen);
+                            Get.toNamed(AppRoutes.registerScreen);
                           },
                           child: Text(
                             'Sign Up',
@@ -170,7 +171,7 @@ class SignInScreen extends GetView<AuthController> {
                         ),
                         GestureDetector(
                           onTap: () {
-                            Get.offNamed(AppRoutes.forgotPasswordScreen);
+                            Get.toNamed(AppRoutes.forgotPasswordScreen);
                           },
                           child: Text(
                             'Forgot Password ?',
@@ -190,7 +191,9 @@ class SignInScreen extends GetView<AuthController> {
                     Obx(
                           () => CustomElevatedButton(
                         text: 'Log In',
-                        onTap: controller.onSignInPressed,
+                        onTap:(){
+                          controller.onSignInPressed(signInFormKey);
+                        },
                         isLoading: controller.isSignInLoading.value,
                         backgroundColor: const Color(0xFF7B1FE0),
                         height: 54.h,

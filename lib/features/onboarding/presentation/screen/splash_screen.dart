@@ -39,7 +39,31 @@ class _SplashScreenState extends State<SplashScreen> {
             ),
           ),
           Center(
-            child: Image.asset("asset/image/onboarding/splashLogo.png"),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Image.asset("asset/image/onboarding/logo.png"),
+                SizedBox(height: 16.h),
+                Text(
+                  "Premium Trading Signals",
+                  style: TextStyle(
+                    fontSize: 14.sp,
+                    color: Color(0xFF8E8A9E),
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+                SizedBox(height: 8.h),
+                Text(
+                  "-PRECISION  •  PERFORMANCE  •  PROFIT-",
+                  style: TextStyle(
+                    fontSize: 12.sp,
+                    color: Color(0xFFBFA06D),
+                    letterSpacing: 2.w,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ],
+            ),
           ),
           Positioned(
             bottom: 60.h,
@@ -54,24 +78,13 @@ class _SplashScreenState extends State<SplashScreen> {
                     height: 60.h,
                     width: 60.w,
                     padding: EdgeInsets.all(12.w),
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       shape: BoxShape.circle,
-                      color: Colors.white.withOpacity(0.15),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.3),
-                        width: 1.5,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.white.withOpacity(0.1),
-                          blurRadius: 12,
-                          spreadRadius: 1,
-                        ),
-                      ],
                     ),
-                    child: const CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 3,
+                    child: CircularProgressIndicator(
+                      color: Colors.white.withValues(alpha: 0.4),
+                      strokeCap: StrokeCap.round,
+                      strokeWidth: 6,
                     ),
                   ),
                 ),

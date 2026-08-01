@@ -22,7 +22,7 @@ class HistoryContainer extends GetxController {
   //---------------- Search + filter ----------------
   final RxString searchQuery = ''.obs;
   final RxString selectedFilter = 'All'.obs;
-  final List<String> filters = const ['All', 'Win', 'Loss', 'Crypto'];
+  final List<String> filters = const ['All', 'Win', 'Loss', 'BreakEvent'];
   final RxBool isFilterPanelOpen = false.obs;
 
   List<HistorySignalModel> get filteredSignals {

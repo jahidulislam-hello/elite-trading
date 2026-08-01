@@ -84,8 +84,9 @@ class ProfileController extends GetxController {
     }
   }
 
-  //---------------- Help & Support ----------------
+//---------------- Help & Support ----------------
   final String supportEmail = 'example12345@gmail.com';
+  final String telegramUsername = 'elitetradingsupport';
 
   void onContactSupportPressed() async {
     final Uri emailUri = Uri(
@@ -103,6 +104,22 @@ class ProfileController extends GetxController {
       }
     } catch (e) {
       Get.snackbar('Error', 'Could not open email app');
+    }
+  }
+
+  void onContactTelegramPressed() async {
+    final Uri telegramUri = Uri.parse('https://t.me/$telegramUsername');
+
+    try {
+      final launched = await launchUrl(
+        telegramUri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!launched) {
+        Get.snackbar('Error', 'Could not open Telegram');
+      }
+    } catch (e) {
+      Get.snackbar('Error', 'Could not open Telegram');
     }
   }
 

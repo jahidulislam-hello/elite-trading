@@ -36,7 +36,9 @@ class RegisterScreen extends GetView<AuthController> {
 
                     // Back button
                     GestureDetector(
-                      onTap: () => Get.back(),
+                      onTap: (){
+                        Get.back();
+                      },
                       child: Icon(
                         Icons.arrow_back,
                         color: Colors.white,

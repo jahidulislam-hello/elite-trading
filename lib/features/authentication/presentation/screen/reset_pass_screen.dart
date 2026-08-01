@@ -11,6 +11,7 @@ class ResetPassScreen extends GetView<AuthController> {
 
   @override
   Widget build(BuildContext context) {
+    final resetPassFormKey = GlobalKey<FormState>();
     return Scaffold(
       backgroundColor: const Color(0xFF0F0B1E),
       resizeToAvoidBottomInset: true,
@@ -61,7 +62,7 @@ class ResetPassScreen extends GetView<AuthController> {
             child: SingleChildScrollView(
               padding: EdgeInsets.symmetric(horizontal: 20.w),
               child: Form(
-                key: controller.resetPassFormKey,
+                key: resetPassFormKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -138,7 +139,7 @@ class ResetPassScreen extends GetView<AuthController> {
                     CustomElevatedButton(
                       text: 'Reset Password',
                       onTap: () {
-                        controller.resetPassword();
+                        controller.resetPassword(resetPassFormKey);
                       },
                     ),
 

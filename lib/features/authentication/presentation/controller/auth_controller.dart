@@ -33,7 +33,6 @@ class AuthController extends GetxController {
   }
 
   //------------------Sign In Screen----------------------------
-  final GlobalKey<FormState> signInFormKey = GlobalKey<FormState>();
   final TextEditingController signInEmailController = TextEditingController();
   final TextEditingController signInPasswordController = TextEditingController();
   final RxBool rememberMe = false.obs;
@@ -43,7 +42,7 @@ class AuthController extends GetxController {
     rememberMe.value = value ?? false;
   }
 
-  void onSignInPressed() {
+  void onSignInPressed( signInFormKey) {
     if (signInFormKey.currentState!.validate()) {
       isSignInLoading.value = true;
      Get.offAllNamed(AppRoutes.subscripFirstPage);
@@ -63,12 +62,11 @@ class AuthController extends GetxController {
 
   //------------------reset Password Screen----------------------------
   final TextEditingController resetPass = TextEditingController();
-  final resetPassFormKey = GlobalKey<FormState>();
   final TextEditingController resetConformPass = TextEditingController();
 
-  void resetPassword() {
+  void resetPassword(resetPassFormKey) {
     if (resetPassFormKey.currentState!.validate()) {
-      Get.toNamed(AppRoutes.signInScreen);
+      Get.offNamed(AppRoutes.signInScreen);
     }
   }
 

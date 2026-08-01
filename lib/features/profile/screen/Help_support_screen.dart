@@ -112,6 +112,43 @@ class HelpSupportScreen extends GetView<ProfileController> {
                               ),
                             ),
                           ),
+
+                          SizedBox(height: 14.h),
+
+                          // -------- Contact telegram pill --------
+                          GestureDetector(
+                            onTap: controller.onContactTelegramPressed,
+                            child: Container(
+                              width: double.infinity,
+                              padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF26203A),
+                                borderRadius: BorderRadius.circular(30.r),
+                                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: EdgeInsets.all(8.w),
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFF29A9EA),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(Icons.send_rounded, size: 14.sp, color: Colors.white),
+                                  ),
+                                  SizedBox(width: 12.w),
+                                  Text(
+                                    '@${controller.telegramUsername}',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 13.sp,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.white70,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ),

@@ -25,7 +25,7 @@ class BottomNavController extends GetxController {
     NavItemData(icon: Icons.bolt_rounded, label: 'Signal'),
     NavItemData(icon: Icons.notifications_none_rounded, label: 'Alert'),
     NavItemData(icon: Icons.menu_book_outlined, label: 'Post'),
-    NavItemData(icon: Icons.bar_chart_rounded, label: 'History'),
+    NavItemData(icon: Icons.bar_chart_rounded, label: 'Result'),
   ];
 
   void changeTab(int index) {

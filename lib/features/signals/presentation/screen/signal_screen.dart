@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../data/model/market_hour_model.dart';
+import '../../data/model/signal_model.dart';
 import '../controller/signal_controller.dart';
 import '../widget/signal_card.dart';
 
@@ -28,7 +28,7 @@ class SignalScreen extends GetView<SignalController> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // -------- Greeting header --------
+                  // ── Greeting header ──────────────────────────────────
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -43,53 +43,21 @@ class SignalScreen extends GetView<SignalController> {
                             ),
                           ),
                           SizedBox(height: 4.h),
-                          Text(
-                            controller.userName,
-                            style: GoogleFonts.poppins(
-                              fontSize: 22.sp,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
-                          ),
+                          Obx(() => Text(
+                                controller.userName.value,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 22.sp,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
+                              )),
                         ],
                       ),
                       Row(
                         children: [
-                          // Obx(
-                          //       () => Stack(
-                          //     clipBehavior: Clip.none,
-                          //     children: [
-                          //       Container(
-                          //         padding: EdgeInsets.all(10.w),
-                          //         decoration: const BoxDecoration(
-                          //           color: Color(0xFF1B1830),
-                          //           shape: BoxShape.circle,
-                          //         ),
-                          //         child: Icon(
-                          //           Icons.notifications_outlined,
-                          //           size: 18.sp,
-                          //           color: Colors.white,
-                          //         ),
-                          //       ),
-                          //       if (controller.hasNotification.value)
-                          //         Positioned(
-                          //           top: 0.h,
-                          //           right: 0.w,
-                          //           child: Container(
-                          //             width: 9.w,
-                          //             height: 9.w,
-                          //             decoration: const BoxDecoration(
-                          //               color: Colors.redAccent,
-                          //               shape: BoxShape.circle,
-                          //             ),
-                          //           ),
-                          //         ),
-                          //     ],
-                          //   ),
-                          // ),
                           SizedBox(width: 12.w),
                           GestureDetector(
-                            onTap: (){
+                            onTap: () {
                               Get.toNamed(AppRoutes.profilePage);
                             },
                             child: ClipOval(
@@ -113,13 +81,14 @@ class SignalScreen extends GetView<SignalController> {
 
                   SizedBox(height: 26.h),
 
-                  // -------- Global market hours --------
+                  // ── Global market hours ──────────────────────────────
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.public, size: 16.sp, color: Colors.white70),
+                          Icon(Icons.public,
+                              size: 16.sp, color: Colors.white70),
                           SizedBox(width: 8.w),
                           Text(
                             'Global Market Hours',
@@ -143,23 +112,33 @@ class SignalScreen extends GetView<SignalController> {
                     ],
                   ),
                   SizedBox(height: 12.h),
-                  GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: controller.marketHours.length,
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 12.w,
-                      mainAxisSpacing: 12.h,
-                      childAspectRatio: 1.5,
-                    ),
-                    itemBuilder: (context, index) =>
-                        _MarketHourCard(market: controller.marketHours[index]),
-                  ),
+
+                  Obx(() {
+                    if (controller.isMarketHoursLoading.value) {
+                      return _MarketHoursLoader();
+                    }
+                    if (controller.marketHours.isEmpty) {
+                      return _MarketHoursFallback();
+                    }
+                    return GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: controller.marketHours.length,
+                      gridDelegate:
+                          SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 12.w,
+                        mainAxisSpacing: 12.h,
+                        childAspectRatio: 1.5,
+                      ),
+                      itemBuilder: (context, index) => _MarketHourCard(
+                          market: controller.marketHours[index]),
+                    );
+                  }),
 
                   SizedBox(height: 26.h),
 
-                  // -------- Active signals header --------
+                  // ── Active signals header ────────────────────────────
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -175,10 +154,12 @@ class SignalScreen extends GetView<SignalController> {
                           ),
                           SizedBox(width: 8.w),
                           Obx(
-                                () => Container(
-                              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
+                            () => Container(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 8.w, vertical: 2.h),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF8000FF).withValues(alpha: 0.4),
+                                color: const Color(0xFF8000FF)
+                                    .withValues(alpha: 0.4),
                                 borderRadius: BorderRadius.circular(20.r),
                               ),
                               child: Text(
@@ -206,7 +187,8 @@ class SignalScreen extends GetView<SignalController> {
                               ),
                             ),
                             Icon(Icons.chevron_right,
-                                size: 19.sp,fontWeight: FontWeight.w700, color: const Color(0xFF7B1FE0)),
+                                size: 19.sp,
+                                color: const Color(0xFF7B1FE0)),
                           ],
                         ),
                       ),
@@ -214,13 +196,31 @@ class SignalScreen extends GetView<SignalController> {
                   ),
                   SizedBox(height: 14.h),
 
-                  Obx(
-                        () => Column(
+                  // ── Signals list ─────────────────────────────────────
+                  Obx(() {
+                    if (controller.isSignalsLoading.value &&
+                        controller.signals.isEmpty) {
+                      return const Center(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: 40),
+                          child: CircularProgressIndicator(
+                              color: Color(0xFF7B1FE0), strokeWidth: 2),
+                        ),
+                      );
+                    }
+                    if (controller.signalsError.value.isNotEmpty &&
+                        controller.signals.isEmpty) {
+                      return _SignalsError(
+                        message: controller.signalsError.value,
+                        onRetry: controller.loadSignals,
+                      );
+                    }
+                    return Column(
                       children: controller.signals
-                          .map((signal) => SignalCard(signal: signal))
+                          .map((s) => SignalCard(signal: s))
                           .toList(),
-                    ),
-                  ),
+                    );
+                  }),
                 ],
               ),
             ),
@@ -231,12 +231,20 @@ class SignalScreen extends GetView<SignalController> {
   }
 }
 
+// ── Market hour card ──────────────────────────────────────────────────────
+
 class _MarketHourCard extends StatelessWidget {
   final MarketHourModel market;
   const _MarketHourCard({required this.market});
 
   @override
   Widget build(BuildContext context) {
+    // Display the open time if available, else "—"
+    final timeLabel = market.openTime != null && market.closeTime != null
+        ? '${market.openTime} – ${market.closeTime}'
+        : '—';
+    final utcLabel = market.utcRange ?? '';
+
     return Container(
       padding: EdgeInsets.all(12.w),
       decoration: BoxDecoration(
@@ -252,7 +260,8 @@ class _MarketHourCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Text(market.flag, style: TextStyle(fontSize: 14.sp)),
+                  Text(market.flag,
+                      style: TextStyle(fontSize: 14.sp)),
                   SizedBox(width: 6.w),
                   Text(
                     market.name,
@@ -294,22 +303,122 @@ class _MarketHourCard extends StatelessWidget {
           ),
           SizedBox(height: 10.h),
           Text(
-            market.time,
+            timeLabel,
             style: GoogleFonts.poppins(
-              fontSize: 17.sp,
+              fontSize: 13.sp,
               fontWeight: FontWeight.w700,
               color: market.isOpen ? Colors.white : Colors.white38,
             ),
           ),
           SizedBox(height: 2.h),
           Text(
-            market.utcRange,
+            utcLabel,
             style: GoogleFonts.poppins(
               fontSize: 9.sp,
               color: Colors.white38,
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Loading skeleton ──────────────────────────────────────────────────────
+
+class _MarketHoursLoader extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: 4,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 12.w,
+        mainAxisSpacing: 12.h,
+        childAspectRatio: 1.5,
+      ),
+      itemBuilder: (_, __) => Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF1B1830),
+          borderRadius: BorderRadius.circular(14.r),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Fallback when API returns empty (shows 4 placeholders) ───────────────
+
+class _MarketHoursFallback extends StatelessWidget {
+  static const _markets = [
+    ('🇦🇺', 'Sydney'),
+    ('🇯🇵', 'Tokyo'),
+    ('🇬🇧', 'London'),
+    ('🇺🇸', 'New York'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: _markets.length,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 12.w,
+        mainAxisSpacing: 12.h,
+        childAspectRatio: 1.5,
+      ),
+      itemBuilder: (_, i) {
+        final (flag, name) = _markets[i];
+        return _MarketHourCard(
+          market: MarketHourModel(
+            name: name,
+            isOpen: false,
+            flag: flag,
+            utcRange: '—',
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ── Signals error ─────────────────────────────────────────────────────────
+
+class _SignalsError extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+  const _SignalsError({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: 30.h),
+        child: Column(
+          children: [
+            Icon(Icons.error_outline,
+                color: Colors.redAccent, size: 28.sp),
+            SizedBox(height: 10.h),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(
+                  fontSize: 13.sp, color: Colors.white54),
+            ),
+            SizedBox(height: 12.h),
+            TextButton(
+              onPressed: onRetry,
+              child: Text('Retry',
+                  style: GoogleFonts.poppins(
+                      fontSize: 13.sp,
+                      color: const Color(0xFF7B1FE0))),
+            ),
+          ],
+        ),
       ),
     );
   }

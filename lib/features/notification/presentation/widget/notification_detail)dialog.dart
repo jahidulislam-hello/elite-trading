@@ -3,12 +3,12 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../data/model/notification_item_model.dart';
+import '../../data/model/notification_model.dart';
 import 'notification_list.dart';
 
 
 class NotificationDetailDialog extends StatelessWidget {
-  final NotificationItemModel item;
+  final NotificationModel item;
   const NotificationDetailDialog({super.key, required this.item});
 
   String get _typeLabel {
@@ -19,6 +19,8 @@ class NotificationDetailDialog extends StatelessWidget {
         return 'UPDATE';
       case NotificationType.alert:
         return 'ALERT';
+      case NotificationType.general:
+        return 'INFO';
     }
   }
 
@@ -146,7 +148,7 @@ class NotificationDetailDialog extends StatelessWidget {
                     border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
                   ),
                   child: Text(
-                    item.description,
+                    item.message,
                     textAlign: TextAlign.center,
                     style: GoogleFonts.poppins(
                       fontSize: 13.sp,

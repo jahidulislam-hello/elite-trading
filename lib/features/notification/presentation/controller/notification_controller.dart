@@ -1,82 +1,122 @@
 import 'package:get/get.dart';
 
-import '../../data/model/notification_item_model.dart';
-
+import '../../../../core/exceptions/app_exceptions.dart';
+import '../../data/model/notification_model.dart';
+import '../../notification_service.dart';
 
 class NotificationController extends GetxController {
-  final String userAvatar = 'asset/image/profile/alex.png';
+  // ─── Service ──────────────────────────────────────────────────────────────
+  final NotificationService _service = NotificationService();
 
-  final RxList<NotificationItemModel> notifications = <NotificationItemModel>[].obs;
-  int get unreadCount => notifications.where((n) => n.isUnread).length;
+  // ─── State ────────────────────────────────────────────────────────────────
+  final RxList<NotificationModel> notifications = <NotificationModel>[].obs;
+  final RxBool isLoading = false.obs;
+  final RxString error = ''.obs;
+  final RxInt unreadCount = 0.obs;
 
-  // Group notifications by dateGroup, preserving first-seen order
-  Map<String, List<NotificationItemModel>> get groupedNotifications {
-    final Map<String, List<NotificationItemModel>> map = {};
+  int get totalNotifications => notifications.length;
+
+  /// Group notifications by dateGroup for the UI list
+  Map<String, List<NotificationModel>> get groupedNotifications {
+    final Map<String, List<NotificationModel>> map = {};
     for (final n in notifications) {
       map.putIfAbsent(n.dateGroup, () => []).add(n);
     }
     return map;
   }
 
+  // ─── Lifecycle ────────────────────────────────────────────────────────────
   @override
   void onInit() {
     super.onInit();
-    _loadDummyNotifications();
+    loadNotifications();
   }
 
-  void _loadDummyNotifications() {
-    notifications.assignAll([
-      const NotificationItemModel(
-        id: '1',
-        type: NotificationType.signal,
-        title: 'New Signal Published',
-        description: 'BTC/USDT BUY at \$67,420 — Entry now open. Check your position sizing.',
-        timeAgo: '2h ago',
-        dateGroup: 'TODAY',
-        isUnread: true,
-      ),
-      const NotificationItemModel(
-        id: '2',
-        type: NotificationType.update,
-        title: 'Signal Update: EUR/USD',
-        description: 'TP1 hit at 1.08100 — Move stop loss to entry. Hold for TP2 at 1.07750.',
-        timeAgo: '3h ago',
-        dateGroup: 'TODAY',
-      ),
-      const NotificationItemModel(
-        id: '3',
-        type: NotificationType.alert,
-        title: 'High Impact News Today',
-        description: 'US CPI data at 14:30 UTC. Expect high volatility across all USD pairs.',
-        timeAgo: '5h ago',
-        dateGroup: 'TODAY',
-      ),
-      const NotificationItemModel(
-        id: '4',
-        type: NotificationType.signal,
-        title: 'New Signal Published',
-        description: 'GOLD/USD BUY at \$2,847.50 — Strong bullish confluence on 4H chart.',
-        timeAgo: '4h ago',
-        dateGroup: 'TODAY',
-      ),
-      const NotificationItemModel(
-        id: '5',
-        type: NotificationType.update,
-        title: 'Signal Update: SPX500',
-        description: 'TP2 reached at 5,760. Consider trailing stop for remaining position.',
-        timeAgo: '1d ago',
-        dateGroup: 'TODAY',
-      ),
-      const NotificationItemModel(
-        id: '6',
-        type: NotificationType.alert,
-        title: 'Weekly Report — Jul 14',
-        description: '8 signals · 6 wins · 1 loss · 1 breakeven · Win rate: 75.0%',
-        timeAgo: '2d ago',
-        dateGroup: 'TODAY',
-      ),
-    ]);
+  // ─── Load notifications ───────────────────────────────────────────────────
+  Future<void> loadNotifications({bool refresh = false}) async {
+    if (refresh) notifications.clear();
+    isLoading.value = true;
+    error.value = '';
+    try {
+      final result = await _service.getNotifications();
+      notifications.value = result.notifications;
+      unreadCount.value = result.unreadCount;
+    } on AppException catch (e) {
+      error.value = e.message;
+    } catch (_) {
+      error.value = 'Failed to load notifications.';
+    } finally {
+      isLoading.value = false;
+    }
   }
 
-  void clearAll() => notifications.clear();
+  // ─── Mark single notification as read ────────────────────────────────────
+  Future<void> markAsRead(String id) async {
+    final index = notifications.indexWhere((n) => n.id == id);
+    if (index < 0 || !notifications[index].isUnread) return;
+
+    // Optimistic update
+    final old = notifications[index];
+    notifications[index] = NotificationModel(
+      id: old.id,
+      title: old.title,
+      message: old.message,
+      audience: old.audience,
+      category: old.category,
+      status: old.status,
+      sentAt: old.sentAt,
+      timeAgo: old.timeAgo,
+      sentLabel: old.sentLabel,
+      isRead: true,
+    );
+    if (unreadCount.value > 0) unreadCount.value--;
+
+    try {
+      await _service.markAsRead(id);
+    } catch (_) {
+      // Revert on error
+      notifications[index] = old;
+      unreadCount.value++;
+    }
+  }
+
+  // ─── Mark all as read ─────────────────────────────────────────────────────
+  Future<void> markAllAsRead() async {
+    final hadUnread = unreadCount.value;
+    // Optimistic: mark all read locally
+    for (int i = 0; i < notifications.length; i++) {
+      if (notifications[i].isUnread) {
+        final n = notifications[i];
+        notifications[i] = NotificationModel(
+          id: n.id,
+          title: n.title,
+          message: n.message,
+          audience: n.audience,
+          category: n.category,
+          status: n.status,
+          sentAt: n.sentAt,
+          timeAgo: n.timeAgo,
+          sentLabel: n.sentLabel,
+          isRead: true,
+        );
+      }
+    }
+    unreadCount.value = 0;
+
+    try {
+      await _service.markAllAsRead();
+    } catch (_) {
+      // Revert by reloading
+      unreadCount.value = hadUnread;
+      await loadNotifications(refresh: true);
+    }
+  }
+
+  // ─── Clear (local only) ───────────────────────────────────────────────────
+  void clearAll() {
+    notifications.clear();
+    unreadCount.value = 0;
+  }
+
 }
+

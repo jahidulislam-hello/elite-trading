@@ -3,7 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../data/model/take_profile_model.dart';
+import '../../data/model/signal_model.dart';
 import '../controller/signal_controller.dart';
 
 class SignalCard extends StatelessWidget {
@@ -12,7 +12,7 @@ class SignalCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isBuy = signal.type == SignalType.buy;
+    final isBuy = signal.isBuy;
 
     return GestureDetector(
       onTap: () => Get.find<SignalController>().openSignalDetail(signal),
@@ -28,6 +28,7 @@ class SignalCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ── Header row: asset + status pill ──────────────────────────
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -35,7 +36,7 @@ class SignalCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      signal.pair,
+                      signal.asset,
                       style: GoogleFonts.poppins(
                         fontSize: 15.sp,
                         fontWeight: FontWeight.w700,
@@ -44,7 +45,7 @@ class SignalCard extends StatelessWidget {
                     ),
                     SizedBox(height: 2.h),
                     Text(
-                      signal.subtitleLabel,
+                      signal.categoryLabel,
                       style: GoogleFonts.poppins(
                         fontSize: 11.sp,
                         color: Colors.white54,
@@ -54,19 +55,22 @@ class SignalCard extends StatelessWidget {
                 ),
                 Row(
                   children: [
+                    // Active/Closed dot
                     Container(
                       width: 8.w,
                       height: 8.w,
                       margin: EdgeInsets.only(right: 8.w),
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: signal.isLive
+                        color: signal.isActive
                             ? const Color(0xFF2ECC71)
                             : const Color(0xFFE0A11F),
                       ),
                     ),
+                    // BUY / SELL pill
                     Container(
-                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
                       decoration: BoxDecoration(
                         color: isBuy
                             ? const Color(0xFF2ECC71).withValues(alpha: 0.15)
@@ -78,15 +82,19 @@ class SignalCard extends StatelessWidget {
                           Icon(
                             isBuy ? Icons.trending_up : Icons.trending_down,
                             size: 13.sp,
-                            color: isBuy ? const Color(0xFF2ECC71) : const Color(0xFFE0405C),
+                            color: isBuy
+                                ? const Color(0xFF2ECC71)
+                                : const Color(0xFFE0405C),
                           ),
                           SizedBox(width: 4.w),
                           Text(
-                            isBuy ? 'BUY' : 'SELL',
+                            signal.direction,
                             style: GoogleFonts.poppins(
                               fontSize: 11.sp,
                               fontWeight: FontWeight.w700,
-                              color: isBuy ? const Color(0xFF2ECC71) : const Color(0xFFE0405C),
+                              color: isBuy
+                                  ? const Color(0xFF2ECC71)
+                                  : const Color(0xFFE0405C),
                             ),
                           ),
                         ],
@@ -96,9 +104,12 @@ class SignalCard extends StatelessWidget {
                 ),
               ],
             ),
+
             SizedBox(height: 4.h),
             Divider(color: Colors.white24, thickness: 0.5),
             SizedBox(height: 4.h),
+
+            // ── Entry price ──────────────────────────────────────────────
             Text(
               'ENTRY PRICE',
               style: GoogleFonts.poppins(
@@ -110,17 +121,21 @@ class SignalCard extends StatelessWidget {
             ),
             SizedBox(height: 4.h),
             Text(
-              '\$${signal.entryPrice.toStringAsFixed(2)}',
+              signal.entry,
               style: GoogleFonts.poppins(
                 fontSize: 18.sp,
                 fontWeight: FontWeight.w700,
                 color: Colors.white,
               ),
             ),
+
             SizedBox(height: 14.h),
+
+            // ── SL + TP row ───────────────────────────────────────────────
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Stop Loss
                 Expanded(
                   flex: 4,
                   child: Container(
@@ -128,7 +143,10 @@ class SignalCard extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: const Color(0xFFFF5A6B).withValues(alpha: 0.07),
                       borderRadius: BorderRadius.circular(12.r),
-                      border: Border.all(color: const Color(0xFFFF5A6B).withValues(alpha: 0.27), width: 0.75),
+                      border: Border.all(
+                        color: const Color(0xFFFF5A6B).withValues(alpha: 0.27),
+                        width: 0.75,
+                      ),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -144,7 +162,7 @@ class SignalCard extends StatelessWidget {
                         ),
                         SizedBox(height: 7.h),
                         Text(
-                          '\$${signal.stopLoss.toStringAsFixed(2)}',
+                          signal.sl,
                           style: GoogleFonts.poppins(
                             fontSize: 14.sp,
                             fontWeight: FontWeight.w700,
@@ -152,20 +170,24 @@ class SignalCard extends StatelessWidget {
                           ),
                         ),
                         SizedBox(height: 6.h),
-                        Text(
-                          '${signal.stopLossPercent.toStringAsFixed(2)}%',
-                          style: GoogleFonts.poppins(
-                            fontSize: 11.sp,
-                            fontWeight: FontWeight.w500,
-                            color: const Color(0xFFE0405C),
+                        if (signal.slPercent != null)
+                          Text(
+                            signal.slPercent!,
+                            style: GoogleFonts.poppins(
+                              fontSize: 11.sp,
+                              fontWeight: FontWeight.w500,
+                              color: const Color(0xFFE0405C),
+                            ),
                           ),
-                        ),
                         SizedBox(height: 10.h),
                       ],
                     ),
                   ),
                 ),
+
                 SizedBox(width: 12.w),
+
+                // Take Profits
                 Expanded(
                   flex: 5,
                   child: Container(
@@ -175,7 +197,8 @@ class SignalCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12.r),
                       border: Border.all(
                         width: 0.75,
-                        color: const Color(0xFF00D084).withValues(alpha: 0.07),
+                        color:
+                            const Color(0xFF00D084).withValues(alpha: 0.15),
                       ),
                     ),
                     child: Column(
@@ -191,50 +214,33 @@ class SignalCard extends StatelessWidget {
                           ),
                         ),
                         SizedBox(height: 6.h),
-                        ...signal.takeProfits.map(
-                              (tp) => Padding(
-                            padding: EdgeInsets.only(bottom: 4.h),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  tp.isHit ? Icons.check_circle_outline : Icons.radio_button_unchecked,
-                                  size: 12.sp,
-                                  color: tp.isHit ? const Color(0xFF2ECC71) : Colors.white38,
-                                ),
-                                SizedBox(width: 3.w),
-                                Text(
-                                  tp.label,
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 10.sp,
-                                    fontWeight: FontWeight.w500,
-                                    color: Colors.white54,
-                                  ),
-                                ),
-                                SizedBox(width: 36.w),
-                                Text(
-                                  '\$${tp.price.toStringAsFixed(2)}',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 10.sp,
-                                    fontWeight: FontWeight.w600,
-                                    color: tp.isHit ? const Color(0xFF2ECC71) : Colors.white,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                        // TP1 always present
+                        _TpRow(
+                          label: 'TP1',
+                          priceLabel: signal.tp1,
+                          isHit: false,
                         ),
+                        if (signal.tp2 != null)
+                          _TpRow(label: 'TP2', priceLabel: signal.tp2!),
+                        if (signal.tp3 != null)
+                          _TpRow(label: 'TP3', priceLabel: signal.tp3!),
                       ],
                     ),
                   ),
                 ),
               ],
             ),
+
             SizedBox(height: 12.h),
+
+            // ── Footer: R:R + time ────────────────────────────────────────
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Risk:Reward ${signal.riskReward}',
+                  signal.riskReward != null
+                      ? 'Risk:Reward ${signal.riskReward}'
+                      : signal.type,
                   style: GoogleFonts.poppins(
                     fontSize: 11.sp,
                     color: Colors.white54,
@@ -251,6 +257,57 @@ class SignalCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _TpRow extends StatelessWidget {
+  final String label;
+  final String priceLabel;
+  final bool isHit;
+
+  const _TpRow({
+    required this.label,
+    required this.priceLabel,
+    this.isHit = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 4.h),
+      child: Row(
+        children: [
+          Icon(
+            isHit
+                ? Icons.check_circle_outline
+                : Icons.radio_button_unchecked,
+            size: 12.sp,
+            color: isHit ? const Color(0xFF2ECC71) : Colors.white38,
+          ),
+          SizedBox(width: 3.w),
+          Text(
+            label,
+            style: GoogleFonts.poppins(
+              fontSize: 10.sp,
+              fontWeight: FontWeight.w500,
+              color: Colors.white54,
+            ),
+          ),
+          SizedBox(width: 8.w),
+          Expanded(
+            child: Text(
+              priceLabel,
+              style: GoogleFonts.poppins(
+                fontSize: 10.sp,
+                fontWeight: FontWeight.w600,
+                color: isHit ? const Color(0xFF2ECC71) : Colors.white,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
       ),
     );
   }

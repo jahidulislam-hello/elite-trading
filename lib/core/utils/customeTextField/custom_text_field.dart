@@ -132,9 +132,6 @@ class _CustomTextFieldState extends State<CustomTextField> {
                     } else if (widget.isPassword) {
                       if (value.isEmpty) {
                         return "Please ${widget.hintText?.toLowerCase()}";
-                      } else if (value.length < 8 ||
-                          !AppConstants.validatePassword(value)) {
-                        return "Password: 8 characters min, letters & digits \nrequired";
                       }
                     }
                   } else {

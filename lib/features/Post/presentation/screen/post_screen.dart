@@ -4,7 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/routes/app_routes.dart';
-import '../../data/model/post_data.dart';
+import '../../data/model/post_model.dart';
 import '../controller/post_controller.dart';
 
 class PostScreen extends GetView<PostController> {
@@ -15,7 +15,7 @@ class PostScreen extends GetView<PostController> {
     return Scaffold(
       body: Stack(
         children: [
-          Container(
+          SizedBox(
             height: MediaQuery.of(context).size.height,
             width: MediaQuery.of(context).size.width,
             child: Image.asset(
@@ -31,7 +31,7 @@ class PostScreen extends GetView<PostController> {
                 children: [
                   SizedBox(height: 16.h),
 
-                  // -------- Header --------
+                  // ── Header ──────────────────────────────────────────
                   Obx(() {
                     final isEmpty = controller.posts.isEmpty;
                     return Row(
@@ -65,9 +65,7 @@ class PostScreen extends GetView<PostController> {
                         ),
                         SizedBox(width: 12.w),
                         GestureDetector(
-                          onTap: (){
-                            Get.toNamed(AppRoutes.profilePage);
-                          },
+                          onTap: () => Get.toNamed(AppRoutes.profilePage),
                           child: ClipOval(
                             child: Image.network(
                               "https://media.sproutsocial.com/uploads/2022/06/profile-picture.jpeg",
@@ -88,17 +86,38 @@ class PostScreen extends GetView<PostController> {
 
                   SizedBox(height: 8.h),
 
-                  // -------- Body --------
+                  // ── Body ────────────────────────────────────────────
                   Expanded(
                     child: Obx(() {
+                      if (controller.isPostsLoading.value &&
+                          controller.posts.isEmpty) {
+                        return const Center(
+                          child: CircularProgressIndicator(
+                              color: Color(0xFF7B1FE0), strokeWidth: 2),
+                        );
+                      }
+                      if (controller.postsError.value.isNotEmpty &&
+                          controller.posts.isEmpty) {
+                        return _PostsError(
+                          message: controller.postsError.value,
+                          onRetry: controller.loadPosts,
+                        );
+                      }
                       if (controller.posts.isEmpty) {
                         return const _EmptyPostsState();
                       }
-                      return ListView.builder(
-                        padding: EdgeInsets.only(top: 16.h, bottom: 90.h),
-                        itemCount: controller.posts.length,
-                        itemBuilder: (context, index) =>
-                            _PostCard(post: controller.posts[index]),
+                      return RefreshIndicator(
+                        onRefresh: () =>
+                            controller.loadPosts(refresh: true),
+                        color: const Color(0xFF7B1FE0),
+                        backgroundColor: const Color(0xFF1B1830),
+                        child: ListView.builder(
+                          padding:
+                              EdgeInsets.only(top: 16.h, bottom: 90.h),
+                          itemCount: controller.posts.length,
+                          itemBuilder: (context, index) =>
+                              _PostCard(post: controller.posts[index]),
+                        ),
                       );
                     }),
                   ),
@@ -112,18 +131,20 @@ class PostScreen extends GetView<PostController> {
   }
 }
 
+// ── Post Card ─────────────────────────────────────────────────────────────
+
 class _PostCard extends StatelessWidget {
   final PostModel post;
   const _PostCard({required this.post});
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.find<PostController>();
+    final ctrl = Get.find<PostController>();
 
     return Padding(
       padding: EdgeInsets.only(bottom: 18.h),
       child: GestureDetector(
-        onTap: () => controller.onPostTap(post),
+        onTap: () => ctrl.onPostTap(post),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(20.r),
           child: BackdropFilter(
@@ -132,37 +153,39 @@ class _PostCard extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.06),
                 borderRadius: BorderRadius.circular(20.r),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+                border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.14)),
               ),
               child: Column(
                 children: [
+                  // ── Cover image / category badge ───────────────
                   Stack(
                     children: [
                       ClipRRect(
                         borderRadius: BorderRadius.circular(14.r),
-                        child: Image.asset(
-                          post.imageAsset,
-                          width: double.infinity,
-                          height: 160.h,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
-                            width: double.infinity,
-                            height: 160.h,
-                            color: const Color(0xFF1B1830),
-                          ),
-                        ),
+                        child: post.coverImage != null
+                            ? Image.network(
+                                post.coverImage!,
+                                width: double.infinity,
+                                height: 160.h,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) =>
+                                    _ImageFallback(height: 160.h),
+                              )
+                            : _ImageFallback(height: 160.h),
                       ),
                       Positioned(
                         top: 12.h,
                         right: 12.w,
                         child: Container(
-                          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 12.w, vertical: 6.h),
                           decoration: BoxDecoration(
                             color: Colors.black.withValues(alpha: 0.55),
                             borderRadius: BorderRadius.circular(20.r),
                           ),
                           child: Text(
-                            post.tag,
+                            post.category, // ← was post.tag
                             style: GoogleFonts.poppins(
                               fontSize: 11.sp,
                               fontWeight: FontWeight.w600,
@@ -173,11 +196,13 @@ class _PostCard extends StatelessWidget {
                       ),
                     ],
                   ),
+
                   Padding(
                     padding: EdgeInsets.all(14.w),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // ── Author row ───────────────────────────
                         Row(
                           children: [
                             Container(
@@ -199,17 +224,17 @@ class _PostCard extends StatelessWidget {
                             ),
                             SizedBox(width: 8.w),
                             Text(
-                              post.authorName,
+                              'Elite Trading',
                               style: GoogleFonts.poppins(
                                 fontSize: 13.sp,
                                 fontWeight: FontWeight.w600,
                                 color: Colors.white,
                               ),
                             ),
-                            if (post.isVerified) ...[
-                              SizedBox(width: 4.w),
-                              Icon(Icons.verified, size: 14.sp, color: const Color(0xFF7B1FE0)),
-                            ],
+                            SizedBox(width: 4.w),
+                            Icon(Icons.verified,
+                                size: 14.sp,
+                                color: const Color(0xFF7B1FE0)),
                             const Spacer(),
                             Text(
                               post.timeAgo,
@@ -221,6 +246,8 @@ class _PostCard extends StatelessWidget {
                           ],
                         ),
                         SizedBox(height: 10.h),
+
+                        // ── Title ────────────────────────────────
                         Text(
                           post.title,
                           style: GoogleFonts.poppins(
@@ -230,8 +257,10 @@ class _PostCard extends StatelessWidget {
                           ),
                         ),
                         SizedBox(height: 6.h),
+
+                        // ── Excerpt ──────────────────────────────
                         Text(
-                          post.description,
+                          post.excerpt, // ← was post.description
                           maxLines: 3,
                           overflow: TextOverflow.ellipsis,
                           style: GoogleFonts.poppins(
@@ -242,31 +271,61 @@ class _PostCard extends StatelessWidget {
                           ),
                         ),
                         SizedBox(height: 7.h),
-                        Divider(
-                          color: Colors.white38,thickness: 0.5,
-                        ),
+                        Divider(color: Colors.white38, thickness: 0.5),
                         SizedBox(height: 12.h),
+
+                        // ── Stats row ─────────────────────────────
                         Row(
                           children: [
-                            Icon(Icons.favorite_border, size: 16.sp, color: Colors.white54),
-                            SizedBox(width: 6.w),
-                            Text(
-                              '${post.likes}',
-                              style: GoogleFonts.poppins(fontSize: 12.sp, color: Colors.white54),
+                            GestureDetector(
+                              onTap: () =>
+                                  ctrl.onTogglePostLike(post.id),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    post.isLiked
+                                        ? Icons.favorite
+                                        : Icons.favorite_border,
+                                    size: 16.sp,
+                                    color: post.isLiked
+                                        ? Colors.redAccent
+                                        : Colors.white54,
+                                  ),
+                                  SizedBox(width: 6.w),
+                                  Text(
+                                    '${post.likes}',
+                                    style: GoogleFonts.poppins(
+                                        fontSize: 12.sp,
+                                        color: Colors.white54),
+                                  ),
+                                ],
+                              ),
                             ),
                             SizedBox(width: 20.w),
-                            Icon(Icons.mode_comment_outlined, size: 16.sp, color: Colors.white54),
+                            Icon(Icons.mode_comment_outlined,
+                                size: 16.sp, color: Colors.white54),
                             SizedBox(width: 6.w),
                             Text(
-                              '${post.comments}',
-                              style: GoogleFonts.poppins(fontSize: 12.sp, color: Colors.white54),
+                              '${post.commentsCount}', // ← was post.comments
+                              style: GoogleFonts.poppins(
+                                  fontSize: 12.sp, color: Colors.white54),
                             ),
                             const Spacer(),
-                            Icon(Icons.share_outlined, size: 16.sp, color: Colors.white54),
-                            SizedBox(width: 6.w),
-                            Text(
-                              '${post.shares}',
-                              style: GoogleFonts.poppins(fontSize: 12.sp, color: Colors.white54),
+                            GestureDetector(
+                              onTap: () => ctrl.onSharePost(post.id),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.share_outlined,
+                                      size: 16.sp, color: Colors.white54),
+                                  SizedBox(width: 6.w),
+                                  Text(
+                                    '${post.sharesCount}', // ← was post.shares
+                                    style: GoogleFonts.poppins(
+                                        fontSize: 12.sp,
+                                        color: Colors.white54),
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),
@@ -282,6 +341,61 @@ class _PostCard extends StatelessWidget {
     );
   }
 }
+
+// ── Image fallback ────────────────────────────────────────────────────────
+
+class _ImageFallback extends StatelessWidget {
+  final double height;
+  const _ImageFallback({required this.height});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      height: height,
+      color: const Color(0xFF1B1830),
+      child: Icon(Icons.image_outlined,
+          size: 40, color: Colors.white.withValues(alpha: 0.15)),
+    );
+  }
+}
+
+// ── Error state ───────────────────────────────────────────────────────────
+
+class _PostsError extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+  const _PostsError({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: 40.h),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.error_outline, color: Colors.redAccent, size: 32.sp),
+            SizedBox(height: 12.h),
+            Text(message,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(
+                    fontSize: 13.sp, color: Colors.white54)),
+            SizedBox(height: 14.h),
+            TextButton(
+              onPressed: onRetry,
+              child: Text('Retry',
+                  style: GoogleFonts.poppins(
+                      fontSize: 13.sp, color: const Color(0xFF7B1FE0))),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Empty state ───────────────────────────────────────────────────────────
 
 class _EmptyPostsState extends StatelessWidget {
   const _EmptyPostsState();
@@ -299,19 +413,16 @@ class _EmptyPostsState extends StatelessWidget {
               alignment: Alignment.center,
               children: [
                 Positioned(
-                  left: 20.w,
-                  top: 40.h,
-                  child: _bubble(60.w, const Color(0xFF3A3160)),
-                ),
+                    left: 20.w,
+                    top: 40.h,
+                    child: _bubble(60.w, const Color(0xFF3A3160))),
                 Positioned(
-                  right: 20.w,
-                  top: 30.h,
-                  child: _bubble(70.w, const Color(0xFF433A70)),
-                ),
+                    right: 20.w,
+                    top: 30.h,
+                    child: _bubble(70.w, const Color(0xFF433A70))),
                 Positioned(
-                  top: 70.h,
-                  child: _bubble(90.w, const Color(0xFF5C4E99)),
-                ),
+                    top: 70.h,
+                    child: _bubble(90.w, const Color(0xFF5C4E99))),
                 Container(
                   width: 64.w,
                   height: 64.w,
@@ -320,34 +431,23 @@ class _EmptyPostsState extends StatelessWidget {
                     color: Color(0xFF7B1FE0),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(Icons.search, size: 28.sp, color: Colors.white),
+                  child:
+                      Icon(Icons.search, size: 28.sp, color: Colors.white),
                 ),
                 Positioned(
-                  top: 10.h,
-                  left: 40.w,
-                  child: _dot(8.w),
-                ),
+                    top: 10.h, left: 40.w, child: _dot(8.w)),
                 Positioned(
-                  top: 0,
-                  right: 30.w,
-                  child: _dot(6.w),
-                ),
+                    top: 0, right: 30.w, child: _dot(6.w)),
                 Positioned(
-                  top: 40.h,
-                  right: 0,
-                  child: _dot(10.w),
-                ),
+                    top: 40.h, right: 0, child: _dot(10.w)),
                 Positioned(
-                  bottom: 10.h,
-                  left: 20.w,
-                  child: _dot(9.w),
-                ),
+                    bottom: 10.h, left: 20.w, child: _dot(9.w)),
               ],
             ),
           ),
           SizedBox(height: 24.h),
           Text(
-            'There have no post yet',
+            'No posts yet',
             style: GoogleFonts.poppins(
               fontSize: 14.sp,
               fontWeight: FontWeight.w500,
@@ -359,25 +459,21 @@ class _EmptyPostsState extends StatelessWidget {
     );
   }
 
-  Widget _bubble(double size, Color color) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.6),
-        shape: BoxShape.circle,
-      ),
-    );
-  }
+  Widget _bubble(double size, Color color) => Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.6),
+          shape: BoxShape.circle,
+        ),
+      );
 
-  Widget _dot(double size) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: const BoxDecoration(
-        color: Color(0xFF9B5CFF),
-        shape: BoxShape.circle,
-      ),
-    );
-  }
+  Widget _dot(double size) => Container(
+        width: size,
+        height: size,
+        decoration: const BoxDecoration(
+          color: Color(0xFF9B5CFF),
+          shape: BoxShape.circle,
+        ),
+      );
 }

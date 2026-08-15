@@ -1,17 +1,15 @@
 class ApiConstants {
-  static const String baseUrl = 'https://stackfood-admin.6amtech.com';
-  static const String config = '/api/v1/config';
+  ApiConstants._();
 
-  static String restaurants(int offset, int limit) =>
-      '/api/v1/restaurants/get-restaurants/all?offset=$offset&limit=$limit';
+  /// Backend base URL.
+  /// • Android emulator  → http://10.0.2.2:2002
+  /// • iOS simulator     → http://127.0.0.1:2002
+  /// • Real device (LAN) → http://192.168.x.x:2002
+  /// • Production        → https://your-domain.com
+  static const String baseUrl = 'https://sabbir2002.ssh.bd';
 
-  static Map<String, String> headers = {
-    'Content-Type': 'application/json; charset=UTF-8',
-    'zoneId': '[1]',
-    'latitude': '23.735129',
-    'longitude': '90.425614',
+  static const Map<String, String> defaultHeaders = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
   };
-
-  static const String cacheBanners = 'banners';
-
 }

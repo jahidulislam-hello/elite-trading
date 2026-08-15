@@ -2,31 +2,38 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../data/model/notification_item_model.dart';
+import '../../data/model/notification_model.dart';
 import '../controller/notification_controller.dart';
+// ignore: file_names
 import 'notification_detail)dialog.dart';
 
-
 /// Icon + colors per notification type — shared between the tile and the dialog.
-({IconData icon, Color bg, Color fg}) notificationIconStyle(NotificationType type) {
+({IconData icon, Color bg, Color fg}) notificationIconStyle(
+    NotificationType type) {
   switch (type) {
     case NotificationType.signal:
       return (
-      icon: Icons.bolt,
-      bg: const Color(0xFF2ECC71).withValues(alpha: 0.15),
-      fg: const Color(0xFF2ECC71),
+        icon: Icons.bolt,
+        bg: const Color(0xFF2ECC71).withValues(alpha: 0.15),
+        fg: const Color(0xFF2ECC71),
       );
     case NotificationType.update:
       return (
-      icon: Icons.show_chart,
-      bg: const Color(0xFF7B1FE0).withValues(alpha: 0.15),
-      fg: const Color(0xFF9B6BFF),
+        icon: Icons.show_chart,
+        bg: const Color(0xFF7B1FE0).withValues(alpha: 0.15),
+        fg: const Color(0xFF9B6BFF),
       );
     case NotificationType.alert:
       return (
-      icon: Icons.error_outline,
-      bg: const Color(0xFFE0A11F).withValues(alpha: 0.15),
-      fg: const Color(0xFFE0A11F),
+        icon: Icons.error_outline,
+        bg: const Color(0xFFE0A11F).withValues(alpha: 0.15),
+        fg: const Color(0xFFE0A11F),
+      );
+    case NotificationType.general:
+      return (
+        icon: Icons.notifications_outlined,
+        bg: Colors.white.withValues(alpha: 0.08),
+        fg: Colors.white54,
       );
   }
 }
@@ -65,7 +72,7 @@ class NotificationsList extends StatelessWidget {
             ...List.generate(items.length, (index) {
               return Column(
                 children: [
-                  NotificationTile(item: items[index]),
+                  NotificationTile(item: items[index], controller: controller),
                   if (index != items.length - 1)
                     Padding(
                       padding: EdgeInsets.symmetric(vertical: 12.h),
@@ -87,8 +94,11 @@ class NotificationsList extends StatelessWidget {
 }
 
 class NotificationTile extends StatelessWidget {
-  final NotificationItemModel item;
-  const NotificationTile({super.key, required this.item});
+  final NotificationModel item;
+  final NotificationController controller;
+
+  const NotificationTile(
+      {super.key, required this.item, required this.controller});
 
   @override
   Widget build(BuildContext context) {
@@ -96,6 +106,8 @@ class NotificationTile extends StatelessWidget {
 
     return GestureDetector(
       onTap: () {
+        // Mark as read when tapped
+        controller.markAsRead(item.id);
         Get.dialog(
           NotificationDetailDialog(item: item),
           barrierDismissible: true,
@@ -154,7 +166,7 @@ class NotificationTile extends StatelessWidget {
                 ),
                 SizedBox(height: 6.h),
                 Text(
-                  item.description,
+                  item.message, // ← was item.description
                   style: GoogleFonts.poppins(
                     fontSize: 12.sp,
                     fontWeight: FontWeight.w400,

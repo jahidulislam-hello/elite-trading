@@ -1,42 +1,41 @@
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-import '../../data/model/market_hour_model.dart';
-import '../../data/model/take_profile_model.dart';
+import '../../../../core/exceptions/app_exceptions.dart';
+import '../../data/model/signal_model.dart';
+import '../../signal_service.dart';
 import '../screen/all_singnal_screen.dart';
 import '../screen/signal_details_screen.dart';
 
 class SignalController extends GetxController {
-  //---------------- Greeting ----------------
-  final String userName = 'Alex Thompson';
-  final String userAvatar = 'asset/image/profile/alex.png';
-  final RxBool hasNotification = true.obs;
+  // ─── Service ──────────────────────────────────────────────────────────────
+  final SignalService _service = SignalService();
 
-  //---------------- Global market hours ----------------
-  final List<MarketHourModel> marketHours = const [
-    MarketHourModel(flag: '🇦🇺', name: 'Sydney', isOpen: false, time: '18:17:35', utcRange: '22:00-07:00 UTC'),
-    MarketHourModel(flag: '🇯🇵', name: 'Tokyo', isOpen: true, time: '18:17:35', utcRange: '22:00-07:00 UTC'),
-    MarketHourModel(flag: '🇬🇧', name: 'London', isOpen: true, time: '18:17:35', utcRange: '22:00-07:00 UTC'),
-    MarketHourModel(flag: '🇺🇸', name: 'New York', isOpen: false, time: '18:17:35', utcRange: '22:00-07:00 UTC'),
-  ];
+  // ─── User display name (loaded from auth/profile later) ──────────────────
+  final RxString userName = 'Trader'.obs;
 
-  //---------------- Signals ----------------
+  // ─── Market hours ────────────────────────────────────────────────────────
+  final RxList<MarketHourModel> marketHours = <MarketHourModel>[].obs;
+  final RxBool isMarketHoursLoading = false.obs;
+
+  // ─── Signal feed ──────────────────────────────────────────────────────────
   final RxList<SignalModel> signals = <SignalModel>[].obs;
-  int get totalSignals => signals.length;
+  final RxBool isSignalsLoading = false.obs;
+  final RxString signalsError = ''.obs;
+  final RxString accessLevel = 'full'.obs; // 'full' | 'limited' | etc.
 
-  //---------------- All signal screen: category + search ----------------
-
+  // ─── Search & category filter ─────────────────────────────────────────────
   final TextEditingController searchController = TextEditingController();
   final RxString selectedCategory = 'All'.obs;
-  final List<String> categories = const ['All', 'Forex', 'Crypto', 'Gold'];
+  final List<String> categories = const ['All', 'Forex', 'Crypto', 'Commodity', 'Index'];
   final RxString searchQuery = ''.obs;
 
   List<SignalModel> get filteredSignals {
     return signals.where((s) {
       final matchesCategory = selectedCategory.value == 'All' ||
-          s.categoryLabel.toLowerCase() == selectedCategory.value.toLowerCase();
+          s.category.toLowerCase() == selectedCategory.value.toLowerCase();
       final matchesSearch = searchQuery.value.isEmpty ||
-          s.pair.toLowerCase().contains(searchQuery.value.toLowerCase());
+          s.asset.toLowerCase().contains(searchQuery.value.toLowerCase());
       return matchesCategory && matchesSearch;
     }).toList();
   }
@@ -44,139 +43,202 @@ class SignalController extends GetxController {
   void selectCategory(String category) => selectedCategory.value = category;
   void onSearchChanged(String value) => searchQuery.value = value;
 
-  //---------------- Bottom nav ----------------
-  final RxInt currentNavIndex = 0.obs;
-  void selectNavIndex(int index) => currentNavIndex.value = index;
+  int get totalSignals => signals.length;
 
-  void onSeeAllSignalsPressed() => Get.to(() => const AllSingnalScreen());
+  // ─── Signal detail ────────────────────────────────────────────────────────
+  final Rx<SignalDetailModel?> currentSignalDetail =
+      Rx<SignalDetailModel?>(null);
+  // Keep the list-item ref for quick access to basic info before detail loads
+  final Rx<SignalModel?> currentSignalListItem = Rx<SignalModel?>(null);
+  final RxBool isDetailLoading = false.obs;
+  final RxString detailError = ''.obs;
 
-  //================================================================
-  // SIGNAL DETAIL PAGE STATE
-  //================================================================
-  final Rx<SignalModel?> currentSignal = Rx<SignalModel?>(null);
   final RxBool isFavorite = false.obs;
+  final RxBool alertsEnabled = false.obs;
   final RxInt selectedTabIndex = 0.obs; // 0 = Summary, 1 = Details
   final RxString selectedTimeframe = '1W'.obs;
   final List<String> timeframes = const ['1H', '24H', '3D', '1W', '1M', '6M'];
 
-  void openSignalDetail(SignalModel signal) {
-    currentSignal.value = signal;
-    isFavorite.value = false;
-    selectedTabIndex.value = 0;
-    selectedTimeframe.value = '1W';
-    Get.to(() => const SignalDetailScreen());
-  }
+  // Chart data
+  final Rx<SignalChartData?> chartData = Rx<SignalChartData?>(null);
+  final RxBool isChartLoading = false.obs;
 
-  void toggleFavorite() => isFavorite.value = !isFavorite.value;
-  void selectDetailTab(int index) => selectedTabIndex.value = index;
-  void selectTimeframe(String tf) => selectedTimeframe.value = tf;
-
-  void onEnableAlertsPressed() {
-    final signal = currentSignal.value;
-    if (signal == null) return;
-    Get.snackbar('Alerts Enabled', 'You will be notified about ${signal.pair} updates');
-  }
-
+  // ─── Lifecycle ────────────────────────────────────────────────────────────
   @override
   void onInit() {
     super.onInit();
-    _loadDummySignals();
+    loadMarketHours();
+    loadSignals();
   }
 
-  void _loadDummySignals() {
-    signals.assignAll([
-      const SignalModel(
-        id: '1',
-        pair: 'BTC/USDT',
-        categoryLabel: 'Crypto',
-        subtitleLabel: 'Cryptocurrency',
-        type: SignalType.buy,
-        isLive: true,
-        entryPrice: 67420.00,
-        stopLoss: 65800.00,
-        stopLossPercent: -2.40,
-        takeProfits: [
-          TakeProfitModel(label: 'TP1', price: 69000.00, isHit: true),
-          TakeProfitModel(label: 'TP2', price: 71500.00),
-          TakeProfitModel(label: 'TP3', price: 74500.00),
-        ],
-        riskReward: '1:2.0',
-        timeAgo: '2h ago',
-        tradeType: 'Swing Trade',
-        publishedDate: 'Jul 23 · 09:15',
-        previousClose: 67200.00,
-        openingPrice: 67420.00,
-        change24hPercent: 2.35,
-      ),
-      const SignalModel(
-        id: '2',
-        pair: 'BTC/USDT',
-        categoryLabel: 'Crypto',
-        subtitleLabel: 'Cryptocurrency',
-        type: SignalType.sell,
-        isLive: false,
-        entryPrice: 67420.00,
-        stopLoss: 65800.00,
-        stopLossPercent: -2.40,
-        takeProfits: [
-          TakeProfitModel(label: 'TP1', price: 69000.00, isHit: true),
-          TakeProfitModel(label: 'TP2', price: 71500.00),
-          TakeProfitModel(label: 'TP3', price: 74500.00),
-        ],
-        riskReward: '1:2.0',
-        timeAgo: '2h ago',
-        tradeType: 'Day Trade',
-        publishedDate: 'Jul 23 · 11:40',
-        previousClose: 67900.00,
-        openingPrice: 67650.00,
-        change24hPercent: -1.10,
-      ),
-      const SignalModel(
-        id: '3',
-        pair: 'EUR/USD',
-        categoryLabel: 'Forex',
-        subtitleLabel: 'Forex',
-        type: SignalType.buy,
-        isLive: true,
-        entryPrice: 1.0850,
-        stopLoss: 1.0800,
-        stopLossPercent: -0.46,
-        takeProfits: [
-          TakeProfitModel(label: 'TP1', price: 1.0900, isHit: true),
-          TakeProfitModel(label: 'TP2', price: 1.0950),
-          TakeProfitModel(label: 'TP3', price: 1.1000),
-        ],
-        riskReward: '1:2.0',
-        timeAgo: '3h ago',
-        tradeType: 'Swing Trade',
-        publishedDate: 'Jul 23 · 08:05',
-        previousClose: 1.0830,
-        openingPrice: 1.0845,
-        change24hPercent: 0.62,
-      ),
-      const SignalModel(
-        id: '4',
-        pair: 'XAU/USD',
-        categoryLabel: 'Gold',
-        subtitleLabel: 'Metals',
-        type: SignalType.buy,
-        isLive: true,
-        entryPrice: 2385.00,
-        stopLoss: 2365.00,
-        stopLossPercent: -0.84,
-        takeProfits: [
-          TakeProfitModel(label: 'TP1', price: 2410.00, isHit: true),
-          TakeProfitModel(label: 'TP2', price: 2430.00),
-          TakeProfitModel(label: 'TP3', price: 2450.00),
-        ],
-        riskReward: '1:2.5',
-        timeAgo: '5h ago',
-        tradeType: 'Swing Trade',
-        publishedDate: 'Jul 23 · 06:50',
-        previousClose: 2378.00,
-        openingPrice: 2382.00,
-        change24hPercent: 1.18,
-      ),
-    ]);
+  // ─── Data loading ─────────────────────────────────────────────────────────
+
+  Future<void> loadMarketHours() async {
+    isMarketHoursLoading.value = true;
+    try {
+      final hours = await _service.getMarketHours();
+      marketHours.value = hours;
+    } catch (_) {
+      // Market hours are non-critical — silently fall back to empty
+    } finally {
+      isMarketHoursLoading.value = false;
+    }
+  }
+
+  Future<void> loadSignals({bool refresh = false}) async {
+    if (refresh) signals.clear();
+    isSignalsLoading.value = true;
+    signalsError.value = '';
+    try {
+      final result = await _service.getSignals(
+        category: selectedCategory.value == 'All' ? null : selectedCategory.value,
+      );
+      signals.value = result.signals;
+      accessLevel.value = result.access;
+    } on AppException catch (e) {
+      signalsError.value = e.message;
+    } catch (_) {
+      signalsError.value = 'Failed to load signals. Please try again.';
+    } finally {
+      isSignalsLoading.value = false;
+    }
+  }
+
+  // ─── Navigation ───────────────────────────────────────────────────────────
+
+  void onSeeAllSignalsPressed() => Get.to(() => const AllSingnalScreen());
+
+  void openSignalDetail(SignalModel listItem) {
+    currentSignalListItem.value = listItem;
+    currentSignalDetail.value = null;
+    isFavorite.value = false;
+    alertsEnabled.value = false;
+    selectedTabIndex.value = 0;
+    selectedTimeframe.value = '1W';
+    chartData.value = null;
+    Get.to(() => const SignalDetailScreen());
+    _loadSignalDetail(listItem.id);
+  }
+
+  Future<void> _loadSignalDetail(String id) async {
+    isDetailLoading.value = true;
+    detailError.value = '';
+    try {
+      final detail = await _service.getSignalDetail(id);
+      currentSignalDetail.value = detail;
+      isFavorite.value = detail.header.isFavorite;
+      alertsEnabled.value = detail.userActions.alertsEnabled;
+      // Load chart for the default timeframe
+      await loadChart(id, timeframe: detail.chart.defaultTimeframe);
+    } on AppException catch (e) {
+      detailError.value = e.message;
+    } catch (_) {
+      detailError.value = 'Failed to load signal details.';
+    } finally {
+      isDetailLoading.value = false;
+    }
+  }
+
+  // ─── Chart ────────────────────────────────────────────────────────────────
+
+  Future<void> loadChart(String id, {String timeframe = '1W'}) async {
+    isChartLoading.value = true;
+    try {
+      final data = await _service.getSignalChart(id, timeframe: timeframe);
+      chartData.value = data;
+    } catch (_) {
+      // Chart is non-critical
+    } finally {
+      isChartLoading.value = false;
+    }
+  }
+
+  void selectTimeframe(String tf) {
+    selectedTimeframe.value = tf;
+    final id = currentSignalListItem.value?.id ??
+        currentSignalDetail.value?.header.id;
+    if (id != null) loadChart(id, timeframe: tf);
+  }
+
+  // ─── User actions ─────────────────────────────────────────────────────────
+
+  void selectDetailTab(int index) => selectedTabIndex.value = index;
+
+  Future<void> toggleFavorite() async {
+    final id = currentSignalListItem.value?.id ??
+        currentSignalDetail.value?.header.id;
+    if (id == null) return;
+    final newValue = !isFavorite.value;
+    isFavorite.value = newValue; // optimistic
+    try {
+      await _service.setFavorite(id, enabled: newValue);
+    } catch (_) {
+      isFavorite.value = !newValue; // revert on error
+      _showError('Failed to update favorite.');
+    }
+  }
+
+  Future<void> onEnableAlertsPressed() async {
+    final id = currentSignalListItem.value?.id ??
+        currentSignalDetail.value?.header.id;
+    final detail = currentSignalDetail.value;
+    if (id == null) return;
+    if (detail != null && !detail.userActions.canEnableAlerts) {
+      _showError('Alerts cannot be enabled for this signal.');
+      return;
+    }
+    final newValue = !alertsEnabled.value;
+    alertsEnabled.value = newValue; // optimistic
+    try {
+      await _service.setAlerts(id, enabled: newValue);
+      final asset = currentSignalListItem.value?.asset ??
+          currentSignalDetail.value?.header.asset ?? '';
+      _showSuccess(newValue
+          ? 'Alerts enabled for $asset.'
+          : 'Alerts disabled for $asset.');
+    } catch (_) {
+      alertsEnabled.value = !newValue; // revert
+      _showError('Failed to update alerts.');
+    }
+  }
+
+  // ─── Snackbar helpers ─────────────────────────────────────────────────────
+
+  void _showError(String msg) {
+    if (Get.isSnackbarOpen) Get.closeAllSnackbars();
+    Get.snackbar(
+      'Error',
+      msg,
+      backgroundColor: const Color(0xFF3A1010),
+      colorText: Colors.white,
+      snackPosition: SnackPosition.TOP,
+      margin: const EdgeInsets.all(16),
+      borderRadius: 12,
+      duration: const Duration(seconds: 4),
+      icon: const Icon(Icons.error_outline, color: Colors.redAccent),
+    );
+  }
+
+  void _showSuccess(String msg) {
+    if (Get.isSnackbarOpen) Get.closeAllSnackbars();
+    Get.snackbar(
+      'Success',
+      msg,
+      backgroundColor: const Color(0xFF0F3A1A),
+      colorText: Colors.white,
+      snackPosition: SnackPosition.TOP,
+      margin: const EdgeInsets.all(16),
+      borderRadius: 12,
+      duration: const Duration(seconds: 3),
+      icon: const Icon(Icons.check_circle_outline, color: Colors.greenAccent),
+    );
+  }
+
+  // ─── Dispose ──────────────────────────────────────────────────────────────
+
+  @override
+  void onClose() {
+    searchController.dispose();
+    super.onClose();
   }
 }

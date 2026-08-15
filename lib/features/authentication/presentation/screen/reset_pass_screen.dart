@@ -136,11 +136,14 @@ class ResetPassScreen extends GetView<AuthController> {
 
                     SizedBox(height: 100.h),
 
-                    CustomElevatedButton(
-                      text: 'Reset Password',
-                      onTap: () {
-                        controller.resetPassword(resetPassFormKey);
-                      },
+                    Obx(
+                      () => CustomElevatedButton(
+                        text: 'Reset Password',
+                        isLoading: controller.isResetLoading.value,
+                        onTap: () {
+                          controller.resetPassword(resetPassFormKey);
+                        },
+                      ),
                     ),
 
                     SizedBox(height: 40.h),

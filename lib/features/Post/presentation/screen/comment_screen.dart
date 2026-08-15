@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../data/model/comment.dart';
+import '../../data/model/post_model.dart';
 import '../controller/post_controller.dart';
 
 class CommentScreen extends GetView<PostController> {
@@ -101,17 +101,27 @@ class CommentScreen extends GetView<PostController> {
                             children: [
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(12.r),
-                                child: Image.asset(
-                                  post.imageAsset,
-                                  width: double.infinity,
-                                  height: 130.h,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => Container(
-                                    width: double.infinity,
-                                    height: 130.h,
-                                    color: const Color(0xFF1B1830),
-                                  ),
-                                ),
+                                child: post.coverImage != null
+                                    ? Image.network(
+                                        post.coverImage!,
+                                        width: double.infinity,
+                                        height: 130.h,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) => Container(
+                                          width: double.infinity,
+                                          height: 130.h,
+                                          color: const Color(0xFF1B1830),
+                                        ),
+                                      )
+                                    : Container(
+                                        width: double.infinity,
+                                        height: 130.h,
+                                        color: const Color(0xFF1B1830),
+                                        child: Icon(Icons.image_outlined,
+                                            size: 36,
+                                            color: Colors.white
+                                                .withValues(alpha: 0.15)),
+                                      ),
                               ),
                               Padding(
                                 padding: EdgeInsets.all(10.w),

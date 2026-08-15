@@ -47,14 +47,16 @@ class AddPrementScreen extends GetView<SubscriptionsController> {
                     ),
                   ),
                   SizedBox(height: 8.h),
-                  Text(
-                    "You won't be charged until your free trial ends.",
+                  Obx(() => Text(
+                    controller.isTrialEligible.value
+                        ? "You won't be charged until your free trial ends."
+                        : "Complete your payment to activate your subscription.",
                     style: GoogleFonts.poppins(
                       fontSize: 13.sp,
                       fontWeight: FontWeight.w400,
                       color: Colors.white54,
                     ),
-                  ),
+                  )),
 
                   SizedBox(height: 22.h),
 
@@ -189,135 +191,204 @@ class AddPrementScreen extends GetView<SubscriptionsController> {
 
                   SizedBox(height: 22.h),
 
-                  // Card preview — NOTE: no Obx wrapper here, _CardPreview
-                  // has its own internal Obx for the coupon badge.
-                  _CardPreview(controller: controller),
-
-                  SizedBox(height: 22.h),
-
-                  Text(
-                    'Card Number',
-                    style: GoogleFonts.poppins(
-                      fontSize: 13.sp,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.white70,
-                    ),
-                  ),
-                  SizedBox(height: 8.h),
-                  CustomTextField(
-                    controller: controller.cardNumberController,
-                    hintText: '1234 5678 9012 3456',
-                    keyboardType: TextInputType.number,
-                    prefixIcon: Icon(Icons.credit_card, size: 16.sp),
-                    iconColor: Colors.white38,
-                    filColor: const Color(0xFF1B1830),
-                    hinTextColor: Colors.white,
-                    borderColor: Colors.white.withValues(alpha: 0.06),
-                    borderRadius: 12,
-                    borderHeight: 1,
-                    contentPaddingHorizontal: 14,
-                    contentPaddingVertical: 14,
-                    hinTextSize: 13,
-                    isvalidation: false,
-                  ),
-
-                  SizedBox(height: 16.h),
-
-                  Text(
-                    'Cardholder Name',
-                    style: GoogleFonts.poppins(
-                      fontSize: 13.sp,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.white70,
-                    ),
-                  ),
-                  SizedBox(height: 8.h),
-                  CustomTextField(
-                    controller: controller.cardHolderController,
-                    hintText: 'Alex Kim',
-                    prefixIcon: Icon(Icons.person_outline, size: 16.sp),
-                    iconColor: Colors.white38,
-                    filColor: const Color(0xFF1B1830),
-                    hinTextColor: Colors.white,
-                    borderColor: Colors.white.withValues(alpha: 0.06),
-                    borderRadius: 12,
-                    borderHeight: 1,
-                    contentPaddingHorizontal: 14,
-                    contentPaddingVertical: 14,
-                    hinTextSize: 13,
-                    isvalidation: false,
-                  ),
-
-                  SizedBox(height: 16.h),
-
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
+                  // Card fields — hidden when free trial eligible
+                  Obx(() {
+                    if (controller.isTrialEligible.value) {
+                      // Free trial: show a friendly info box instead
+                      return Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.all(18.w),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              const Color(0xFFBFA06D).withValues(alpha: 0.13),
+                              const Color(0xFF7B1FE0).withValues(alpha: 0.15),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(16.r),
+                          border: Border.all(
+                            color: const Color(0xFF7B1FE0).withValues(alpha: 0.4),
+                          ),
+                        ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'Expiry',
-                              style: GoogleFonts.poppins(
-                                fontSize: 13.sp,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.white70,
-                              ),
+                            Row(
+                              children: [
+                                Icon(Icons.verified_outlined,
+                                    size: 18.sp, color: const Color(0xFF7B1FE0)),
+                                SizedBox(width: 8.w),
+                                Text(
+                                  'Free Trial Available',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 14.sp,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
                             ),
                             SizedBox(height: 8.h),
-                            CustomTextField(
-                              controller: controller.expiryController,
-                              hintText: 'MM/YY',
-                              keyboardType: TextInputType.datetime,
-                              filColor: const Color(0xFF1B1830),
-                              hinTextColor: Colors.white,
-                              borderColor: Colors.white.withValues(alpha: 0.06),
-                              borderRadius: 12,
-                              borderHeight: 1,
-                              contentPaddingHorizontal: 14,
-                              contentPaddingVertical: 14,
-                              hinTextSize: 13,
-                              isvalidation: false,
+                            Text(
+                              'You qualify for a 1-month free trial. No payment is required today. Your subscription begins only after the trial ends.',
+                              style: GoogleFonts.poppins(
+                                fontSize: 12.sp,
+                                color: Colors.white70,
+                                height: 1.5,
+                              ),
+                            ),
+                            SizedBox(height: 12.h),
+                            Row(
+                              children: [
+                                Icon(Icons.lock_outline,
+                                    size: 12.sp, color: Colors.white38),
+                                SizedBox(width: 6.w),
+                                Text(
+                                  'No credit card required to start',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 11.sp,
+                                    color: Colors.white38,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                      ),
-                      SizedBox(width: 14.w),
-                      Expanded(
-                        child: Column(
+                      );
+                    }
+
+                    // Paid plan: show card fields
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _CardPreview(controller: controller),
+                        SizedBox(height: 22.h),
+                        Text(
+                          'Card Number',
+                          style: GoogleFonts.poppins(
+                            fontSize: 13.sp,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white70,
+                          ),
+                        ),
+                        SizedBox(height: 8.h),
+                        CustomTextField(
+                          controller: controller.cardNumberController,
+                          hintText: '1234 5678 9012 3456',
+                          keyboardType: TextInputType.number,
+                          prefixIcon: Icon(Icons.credit_card, size: 16.sp),
+                          iconColor: Colors.white38,
+                          filColor: const Color(0xFF1B1830),
+                          hinTextColor: Colors.white,
+                          borderColor: Colors.white.withValues(alpha: 0.06),
+                          borderRadius: 12,
+                          borderHeight: 1,
+                          contentPaddingHorizontal: 14,
+                          contentPaddingVertical: 14,
+                          hinTextSize: 13,
+                          isvalidation: false,
+                        ),
+                        SizedBox(height: 16.h),
+                        Text(
+                          'Cardholder Name',
+                          style: GoogleFonts.poppins(
+                            fontSize: 13.sp,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white70,
+                          ),
+                        ),
+                        SizedBox(height: 8.h),
+                        CustomTextField(
+                          controller: controller.cardHolderController,
+                          hintText: 'Alex Kim',
+                          prefixIcon: Icon(Icons.person_outline, size: 16.sp),
+                          iconColor: Colors.white38,
+                          filColor: const Color(0xFF1B1830),
+                          hinTextColor: Colors.white,
+                          borderColor: Colors.white.withValues(alpha: 0.06),
+                          borderRadius: 12,
+                          borderHeight: 1,
+                          contentPaddingHorizontal: 14,
+                          contentPaddingVertical: 14,
+                          hinTextSize: 13,
+                          isvalidation: false,
+                        ),
+                        SizedBox(height: 16.h),
+                        Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'CVC',
-                              style: GoogleFonts.poppins(
-                                fontSize: 13.sp,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.white70,
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Expiry',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 13.sp,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.white70,
+                                    ),
+                                  ),
+                                  SizedBox(height: 8.h),
+                                  CustomTextField(
+                                    controller: controller.expiryController,
+                                    hintText: 'MM/YY',
+                                    keyboardType: TextInputType.datetime,
+                                    filColor: const Color(0xFF1B1830),
+                                    hinTextColor: Colors.white,
+                                    borderColor:
+                                        Colors.white.withValues(alpha: 0.06),
+                                    borderRadius: 12,
+                                    borderHeight: 1,
+                                    contentPaddingHorizontal: 14,
+                                    contentPaddingVertical: 14,
+                                    hinTextSize: 13,
+                                    isvalidation: false,
+                                  ),
+                                ],
                               ),
                             ),
-                            SizedBox(height: 8.h),
-                            CustomTextField(
-                              controller: controller.cvcController,
-                              hintText: '•••',
-                              keyboardType: TextInputType.number,
-                              isPassword: true,
-                              iconColor: Colors.white38,
-                              filColor: const Color(0xFF1B1830),
-                              hinTextColor: Colors.white,
-                              borderColor: Colors.white.withValues(alpha: 0.06),
-                              borderRadius: 12,
-                              borderHeight: 1,
-                              contentPaddingHorizontal: 14,
-                              contentPaddingVertical: 14,
-                              hinTextSize: 13,
-                              isvalidation: false,
+                            SizedBox(width: 14.w),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'CVC',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 13.sp,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.white70,
+                                    ),
+                                  ),
+                                  SizedBox(height: 8.h),
+                                  CustomTextField(
+                                    controller: controller.cvcController,
+                                    hintText: '•••',
+                                    keyboardType: TextInputType.number,
+                                    isPassword: true,
+                                    iconColor: Colors.white38,
+                                    filColor: const Color(0xFF1B1830),
+                                    hinTextColor: Colors.white,
+                                    borderColor:
+                                        Colors.white.withValues(alpha: 0.06),
+                                    borderRadius: 12,
+                                    borderHeight: 1,
+                                    contentPaddingHorizontal: 14,
+                                    contentPaddingVertical: 14,
+                                    hinTextSize: 13,
+                                    isvalidation: false,
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),
-                      ),
-                    ],
-                  ),
+                      ],
+                    );
+                  }),
 
                   SizedBox(height: 22.h),
 
@@ -334,18 +405,10 @@ class AddPrementScreen extends GetView<SubscriptionsController> {
                         children: [
                           _SummaryRow(
                             label: 'Plan',
-                            value:
-                            '${controller.selectedPlan.title} — \$${controller.selectedPlan.price}/mo',
+                            value: controller.selectedPlan != null
+                                ? '${controller.selectedPlan!.name} — \$${controller.selectedPlan!.price.toStringAsFixed(0)}/mo'
+                                : '—',
                             valueColor: Colors.white,
-                          ),
-                          SizedBox(height: 5.h),
-                          Divider(color: Colors.white.withValues(alpha: 0.3),thickness: 0.5,),
-                          SizedBox(height: 5.h),
-                          _SummaryRow(
-                            label: 'Coupon Discount',
-                            value: '-\$10.00',
-                            valueColor: const Color(0xFF2ECC71),
-                            isBold: true,
                           ),
                           SizedBox(height: 5.h),
                           Divider(color: Colors.white.withValues(alpha: 0.3),thickness: 0.5,),
@@ -356,6 +419,7 @@ class AddPrementScreen extends GetView<SubscriptionsController> {
                               value:
                               '-\$${controller.couponDiscount.value.toStringAsFixed(2)}',
                               valueColor: const Color(0xFF2ECC71),
+                              isBold: true,
                             ),
                             SizedBox(height: 5.h),
                             Divider(color: Colors.white.withValues(alpha: 0.3),thickness: 0.5,),
@@ -363,7 +427,9 @@ class AddPrementScreen extends GetView<SubscriptionsController> {
                           ],
                           _SummaryRow(
                             label: 'Trial Period',
-                            value: '1 Month Free',
+                            value: controller.isTrialEligible.value
+                                ? '1 Month Free'
+                                : 'No trial available',
                             valueColor: const Color(0xFF7B1FE0),
                           ),
                           SizedBox(height: 5.h),
@@ -382,13 +448,17 @@ class AddPrementScreen extends GetView<SubscriptionsController> {
 
                   SizedBox(height: 28.h),
 
-                  CustomElevatedButton(
-                    text: 'Continue  →',
-                    onTap: controller.onAddPaymentContinuePressed,
-                    isLoading: false,
-                    backgroundColor: const Color(0xFF7B1FE0),
-                    height: 54.h,
-                    borderRadius: 13.r,
+                  Obx(
+                    () => CustomElevatedButton(
+                      text: controller.isTrialEligible.value
+                          ? 'Continue  →'
+                          : 'Purchase Plan  →',
+                      onTap: controller.onAddPaymentContinuePressed,
+                      isLoading: controller.isPurchaseLoading.value,
+                      backgroundColor: const Color(0xFF7B1FE0),
+                      height: 54.h,
+                      borderRadius: 13.r,
+                    ),
                   ),
 
                   SizedBox(height: 24.h),

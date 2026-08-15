@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../authentication/presentation/widget/Elevatedbutton.dart';
 import '../controller/subscriptions_controller.dart';
+import '../../data/model/subscription_models.dart';
 import '../../data/model/plan_model.dart';
 import '../widget/progress_step_header.dart';
 
@@ -29,16 +30,9 @@ class ChoosePlanScreen extends GetView<SubscriptionsController> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   SizedBox(height: 16.h),
-
-                  // Back button + progress bar
-                  ProgressStepHeader(
-                    currentStep: 2,
-                    totalSteps: 4,
-                  ),
-
+                  ProgressStepHeader(currentStep: 2, totalSteps: 4),
                   SizedBox(height: 28.h),
 
-                  // Title
                   Text(
                     'Choose Your Plan',
                     style: GoogleFonts.poppins(
@@ -48,49 +42,69 @@ class ChoosePlanScreen extends GetView<SubscriptionsController> {
                     ),
                   ),
                   SizedBox(height: 8.h),
-                  Text(
-                    'Start with a free trial. Cancel anytime.',
+                  Obx(() => Text(
+                    controller.isTrialEligible.value
+                        ? 'Start with a free trial. Cancel anytime.'
+                        : 'Choose the plan that fits you best.',
                     style: GoogleFonts.poppins(
                       fontSize: 13.sp,
                       fontWeight: FontWeight.w400,
                       color: Colors.white54,
                     ),
-                  ),
+                  )),
 
                   SizedBox(height: 24.h),
 
-                  // Plan cards
-                  Obx(
-                        () => Column(
+                  // ── Plan cards with loader / error / data states ──────────
+                  Obx(() {
+                    if (controller.isPlansLoading.value) {
+                      return _PlansLoader();
+                    }
+                    if (controller.plansError.value.isNotEmpty) {
+                      return _PlansError(
+                        message: controller.plansError.value,
+                        onRetry: controller.loadPlans,
+                      );
+                    }
+                    if (controller.plans.isEmpty) {
+                      return _PlansError(
+                        message: 'No plans available right now.',
+                        onRetry: controller.loadPlans,
+                      );
+                    }
+                    return Column(
                       children: controller.plans
                           .map(
                             (plan) => Padding(
-                          padding: EdgeInsets.only(bottom: 14.h),
-                          child: _PlanCard(
-                            plan: plan,
-                            isSelected:
-                            controller.selectedPlanId.value == plan.id,
-                            onTap: () => controller.selectPlan(plan.id),
-                          ),
-                        ),
-                      )
+                              padding: EdgeInsets.only(bottom: 14.h),
+                              child: _PlanCard(
+                                plan: plan,
+                                isSelected:
+                                    controller.selectedPlanId.value == plan.id,
+                                onTap: () => controller.selectPlan(plan.id),
+                              ),
+                            ),
+                          )
                           .toList(),
-                    ),
-                  ),
+                    );
+                  }),
 
                   SizedBox(height: 8.h),
 
-                  // Comparison table
+                  // Comparison table (static)
                   _ComparisonTable(controller: controller),
 
                   SizedBox(height: 28.h),
 
-                  // Continue button
                   Obx(
-                        () => CustomElevatedButton(
-                      text: 'Continue with ${controller.selectedPlan.title}  →',
+                    () => CustomElevatedButton(
+                      text: controller.selectedPlan != null
+                          ? (controller.isTrialEligible.value
+                              ? 'Start Free Trial with ${controller.selectedPlan!.name}  →'
+                              : 'Continue with ${controller.selectedPlan!.name}  →')
+                          : 'Continue  →',
                       onTap: controller.onContinuePressed,
-                      isLoading: false,
+                      isLoading: controller.isPlansLoading.value,
                       backgroundColor: const Color(0xFF7B1FE0),
                       height: 54.h,
                       borderRadius: 13.r,
@@ -108,8 +122,79 @@ class ChoosePlanScreen extends GetView<SubscriptionsController> {
   }
 }
 
+// ── Loader skeleton ────────────────────────────────────────────────────────
+
+class _PlansLoader extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: List.generate(
+        3,
+        (i) => Padding(
+          padding: EdgeInsets.only(bottom: 14.h),
+          child: Container(
+            height: 120.h,
+            decoration: BoxDecoration(
+              color: const Color(0xFF1B1830),
+              borderRadius: BorderRadius.circular(16.r),
+            ),
+            child: const Center(
+              child: CircularProgressIndicator(
+                color: Color(0xFF7B1FE0),
+                strokeWidth: 2,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Error state ────────────────────────────────────────────────────────────
+
+class _PlansError extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+
+  const _PlansError({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.all(20.w),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1B1830),
+        borderRadius: BorderRadius.circular(16.r),
+      ),
+      child: Column(
+        children: [
+          Icon(Icons.error_outline, color: Colors.redAccent, size: 32.sp),
+          SizedBox(height: 10.h),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.poppins(fontSize: 13.sp, color: Colors.white54),
+          ),
+          SizedBox(height: 14.h),
+          TextButton(
+            onPressed: onRetry,
+            child: Text(
+              'Retry',
+              style: GoogleFonts.poppins(
+                  fontSize: 13.sp, color: const Color(0xFF7B1FE0)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Plan card ──────────────────────────────────────────────────────────────
+
 class _PlanCard extends StatelessWidget {
-  final PlanModel plan;
+  final SubscriptionPlan plan;
   final bool isSelected;
   final VoidCallback onTap;
 
@@ -143,16 +228,14 @@ class _PlanCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Container(
-                      child:Image.asset(plan.emoji),
-                    ),
+                    Image.asset(plan.localEmojiAsset, width: 32.w),
                     SizedBox(width: 12.w),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            plan.title,
+                            plan.name,
                             style: GoogleFonts.poppins(
                               fontSize: 16.sp,
                               fontWeight: FontWeight.w600,
@@ -161,10 +244,9 @@ class _PlanCard extends StatelessWidget {
                           ),
                           SizedBox(height: 2.h),
                           Text(
-                            plan.subtitle,
+                            plan.description,
                             style: GoogleFonts.poppins(
                               fontSize: 12.sp,
-                              fontWeight: FontWeight.w400,
                               color: Colors.white54,
                             ),
                           ),
@@ -186,7 +268,7 @@ class _PlanCard extends StatelessWidget {
                               ),
                             ),
                             Text(
-                              '${plan.price}',
+                              plan.price.toStringAsFixed(0),
                               style: GoogleFonts.poppins(
                                 fontSize: 20.sp,
                                 fontWeight: FontWeight.w700,
@@ -199,7 +281,6 @@ class _PlanCard extends StatelessWidget {
                           'per month',
                           style: GoogleFonts.poppins(
                             fontSize: 10.sp,
-                            fontWeight: FontWeight.w400,
                             color: Colors.white38,
                           ),
                         ),
@@ -207,38 +288,41 @@ class _PlanCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                SizedBox(height: 14.h),
-                ...List.generate(
-                  plan.features.length,
-                      (i) => plan.features[i]
-                      ? Padding(
-                    padding: EdgeInsets.only(bottom: 6.h),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.check_circle,
-                          size: 14.sp,
-                          color: isSelected
-                              ? const Color(0xFF7B1FE0)
-                              : const Color(0xFFFFFFFFFF).withValues(alpha: 0.2),
-                        ),
-                        SizedBox(width: 8.w),
-                        Text(
-                          _featureLabel(i),
-                          style: GoogleFonts.poppins(
-                            fontSize: 12.sp,
-                            fontWeight: FontWeight.w400,
-                            color: Colors.white70,
+
+                if (plan.features.isNotEmpty) ...[
+                  SizedBox(height: 14.h),
+                  ...plan.features.take(4).map(
+                        (f) => Padding(
+                          padding: EdgeInsets.only(bottom: 6.h),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.check_circle,
+                                size: 14.sp,
+                                color: isSelected
+                                    ? const Color(0xFF7B1FE0)
+                                    : Colors.white24,
+                              ),
+                              SizedBox(width: 8.w),
+                              Expanded(
+                                child: Text(
+                                  f,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 12.sp,
+                                    color: Colors.white70,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ],
-                    ),
-                  )
-                      : const SizedBox.shrink(),
-                ),
+                      ),
+                ],
               ],
             ),
           ),
+
+          // "Most Popular" badge
           if (plan.isPopular)
             Positioned(
               top: -12.h,
@@ -246,7 +330,8 @@ class _PlanCard extends StatelessWidget {
               right: 0,
               child: Center(
                 child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 4.h),
+                  padding:
+                      EdgeInsets.symmetric(horizontal: 14.w, vertical: 4.h),
                   decoration: BoxDecoration(
                     color: const Color(0xFF7B1FE0),
                     borderRadius: BorderRadius.circular(20.r),
@@ -262,6 +347,8 @@ class _PlanCard extends StatelessWidget {
                 ),
               ),
             ),
+
+          // Selected checkmark
           if (isSelected)
             Positioned(
               top: 2.h,
@@ -279,22 +366,12 @@ class _PlanCard extends StatelessWidget {
       ),
     );
   }
-
-  String _featureLabel(int index) {
-    // Map plan.features[index] to real labels per plan type.
-    const labels = [
-      'All Forex & Currency Signals',
-      'All Crypto & Altcoin Signals',
-      'Gold, Silver & Commodities',
-      'Stock Index Signals',
-    ];
-    return labels[index];
-  }
 }
+
+// ── Comparison table ───────────────────────────────────────────────────────
 
 class _ComparisonTable extends StatelessWidget {
   final SubscriptionsController controller;
-
   const _ComparisonTable({required this.controller});
 
   @override
@@ -312,90 +389,57 @@ class _ComparisonTable extends StatelessWidget {
             children: [
               Expanded(
                 flex: 2,
-                child: Text(
-                  'FEATURES',
-                  style: GoogleFonts.poppins(
-                    fontSize: 10.sp,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white38,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Center(
-                  child: Text(
-                    'Crypto',
+                child: Text('FEATURES',
                     style: GoogleFonts.poppins(
-                      fontSize: 10.sp,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white38,
+                        fontSize: 10.sp,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white38,
+                        letterSpacing: 0.5)),
+              ),
+              ...['Crypto', 'Forex', 'VIP'].asMap().entries.map(
+                    (e) => Expanded(
+                      child: Center(
+                        child: Text(
+                          e.value,
+                          style: GoogleFonts.poppins(
+                            fontSize: 10.sp,
+                            fontWeight: FontWeight.w600,
+                            color: e.key == 2
+                                ? const Color(0xFFE0A11F)
+                                : Colors.white38,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ),
-              Expanded(
-                child: Center(
-                  child: Text(
-                    'Forex',
-                    style: GoogleFonts.poppins(
-                      fontSize: 10.sp,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white38,
-                    ),
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Center(
-                  child: Text(
-                    'VIP',
-                    style: GoogleFonts.poppins(
-                      fontSize: 10.sp,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFFE0A11F),
-                    ),
-                  ),
-                ),
-              ),
             ],
           ),
           SizedBox(height: 12.h),
           ...controller.comparisonRows.map(
-                (row) => Padding(
+            (row) => Padding(
               padding: EdgeInsets.only(bottom: 12.h),
               child: Row(
                 children: [
                   Expanded(
                     flex: 2,
-                    child: Text(
-                      row.label,
-                      style: GoogleFonts.poppins(
-                        fontSize: 12.sp,
-                        fontWeight: FontWeight.w400,
-                        color: Colors.white70,
-                      ),
-                    ),
+                    child: Text(row.label,
+                        style: GoogleFonts.poppins(
+                            fontSize: 12.sp, color: Colors.white70)),
                   ),
                   ...row.checks.asMap().entries.map(
-                        (entry) => Expanded(
-                      child: Center(
-                        child: entry.value
-                            ? Icon(
-                          Icons.check_circle_outline,
-                          size: 15.sp,
-                          color: entry.key == 2
-                              ? const Color(0xFFE0A11F)
-                              : const Color(0xFF2ECC71),
-                        )
-                            : Icon(
-                          Icons.close,
-                          size: 15.sp,
-                          color: Colors.white24,
+                        (e) => Expanded(
+                          child: Center(
+                            child: e.value
+                                ? Icon(Icons.check_circle_outline,
+                                    size: 15.sp,
+                                    color: e.key == 2
+                                        ? const Color(0xFFE0A11F)
+                                        : const Color(0xFF2ECC71))
+                                : Icon(Icons.close,
+                                    size: 15.sp, color: Colors.white24),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
                 ],
               ),
             ),

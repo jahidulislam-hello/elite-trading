@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../data/model/take_profile_model.dart';
+
+import '../../data/model/signal_model.dart';
 import '../controller/signal_controller.dart';
 import '../widget/signal_candle_chart.dart';
 
@@ -11,38 +12,41 @@ class SignalDetailScreen extends GetView<SignalController> {
 
   @override
   Widget build(BuildContext context) {
-    return Obx(() {
-      final signal = controller.currentSignal.value;
-
-      if (signal == null) {
-        return const Scaffold(
-          backgroundColor: Color(0xFF0F0B1E),
-          body: Center(child: CircularProgressIndicator(color: Colors.white54)),
-        );
-      }
-
-      final isBuy = signal.type == SignalType.buy;
-
-      return Scaffold(
-        backgroundColor: const Color(0xFF0F0B1E),
-        body: Stack(
-          children: [
-            // Background
-            Positioned.fill(
-              child: Image.asset(
-                "asset/image/onboarding/background.png",
-                fit: BoxFit.cover,
-              ),
+    return Scaffold(
+      backgroundColor: const Color(0xFF0F0B1E),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Image.asset(
+              "asset/image/onboarding/background.png",
+              fit: BoxFit.cover,
             ),
+          ),
+          SafeArea(
+            child: Obx(() {
+              final listItem = controller.currentSignalListItem.value;
+              final detail = controller.currentSignalDetail.value;
+              final isLoading = controller.isDetailLoading.value;
 
-            // Content
-            SafeArea(
-              child: SingleChildScrollView(
+              // ── Header info comes from listItem immediately ──────────
+              final asset = detail?.header.asset ??
+                  listItem?.asset ??
+                  '—';
+              final direction = detail?.header.direction ??
+                  listItem?.direction ??
+                  'BUY';
+              final isBuy = direction == 'BUY';
+              final status = detail?.header.status ??
+                  listItem?.status ??
+                  'Active';
+              final isActive = status == 'Active';
+
+              return SingleChildScrollView(
                 padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 30.h),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ── Header ──
+                    // ── Header row ──────────────────────────────────
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -62,7 +66,7 @@ class SignalDetailScreen extends GetView<SignalController> {
                             ),
                             SizedBox(width: 14.w),
                             Text(
-                              signal.pair.replaceAll('/', ' / '),
+                              asset.replaceAll('/', ' / '),
                               style: GoogleFonts.poppins(
                                 fontSize: 18.sp,
                                 fontWeight: FontWeight.w700,
@@ -73,27 +77,31 @@ class SignalDetailScreen extends GetView<SignalController> {
                         ),
                         GestureDetector(
                           onTap: controller.toggleFavorite,
-                          child: Icon(
-                            controller.isFavorite.value
-                                ? Icons.star
-                                : Icons.star_border,
-                            color: const Color(0xFFE0A11F),
-                            size: 22.sp,
-                          ),
+                          child: Obx(() => Icon(
+                                controller.isFavorite.value
+                                    ? Icons.star
+                                    : Icons.star_border,
+                                color: const Color(0xFFE0A11F),
+                                size: 22.sp,
+                              )),
                         ),
                       ],
                     ),
 
                     SizedBox(height: 18.h),
 
-                    // ── Signal type + status pills ──
+                    // ── Direction + status pills ────────────────────
                     Row(
                       children: [
                         Container(
                           padding: EdgeInsets.symmetric(
                               horizontal: 12.w, vertical: 6.h),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF7B1FE0).withValues(alpha: 0.18),
+                            color: isBuy
+                                ? const Color(0xFF2ECC71)
+                                    .withValues(alpha: 0.18)
+                                : const Color(0xFFE0405C)
+                                    .withValues(alpha: 0.18),
                             borderRadius: BorderRadius.circular(20.r),
                           ),
                           child: Row(
@@ -102,8 +110,10 @@ class SignalDetailScreen extends GetView<SignalController> {
                               Container(
                                 width: 6.w,
                                 height: 6.w,
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFF9B6BFF),
+                                decoration: BoxDecoration(
+                                  color: isBuy
+                                      ? const Color(0xFF2ECC71)
+                                      : const Color(0xFFE0405C),
                                   shape: BoxShape.circle,
                                 ),
                               ),
@@ -113,7 +123,9 @@ class SignalDetailScreen extends GetView<SignalController> {
                                 style: GoogleFonts.poppins(
                                   fontSize: 11.sp,
                                   fontWeight: FontWeight.w600,
-                                  color: const Color(0xFFCDA1FF),
+                                  color: isBuy
+                                      ? const Color(0xFF2ECC71)
+                                      : const Color(0xFFE0405C),
                                 ),
                               ),
                             ],
@@ -131,7 +143,7 @@ class SignalDetailScreen extends GetView<SignalController> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
-                                signal.isLive
+                                isActive
                                     ? Icons.check_circle_outline
                                     : Icons.watch_later_outlined,
                                 size: 12.sp,
@@ -139,7 +151,7 @@ class SignalDetailScreen extends GetView<SignalController> {
                               ),
                               SizedBox(width: 5.w),
                               Text(
-                                signal.isLive ? 'Active' : 'Closed',
+                                status,
                                 style: GoogleFonts.poppins(
                                   fontSize: 11.sp,
                                   fontWeight: FontWeight.w600,
@@ -154,52 +166,73 @@ class SignalDetailScreen extends GetView<SignalController> {
 
                     SizedBox(height: 18.h),
 
-                    // ── Price + change ──
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          '\$${signal.entryPrice.toStringAsFixed(2)}',
-                          style: GoogleFonts.poppins(
-                            fontSize: 30.sp,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
+                    // ── Live price + change ─────────────────────────
+                    if (isLoading && detail == null)
+                      _LoadingRow()
+                    else if (detail != null) ...[
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            detail.live.currentPrice != null
+                                ? detail.live.currentPrice!
+                                    .toStringAsFixed(
+                                        (detail.live.currentPrice! > 100)
+                                            ? 2
+                                            : 4)
+                                : listItem?.entry ?? '—',
+                            style: GoogleFonts.poppins(
+                              fontSize: 30.sp,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
                           ),
-                        ),
-                        SizedBox(width: 10.w),
-                        Padding(
-                          padding: EdgeInsets.only(bottom: 6.h),
-                          child: Row(
-                            children: [
-                              Icon(
-                                (signal.change24hPercent ?? 0) >= 0
-                                    ? Icons.trending_up
-                                    : Icons.trending_down,
-                                size: 15.sp,
-                                color: (signal.change24hPercent ?? 0) >= 0
-                                    ? const Color(0xFF2ECC71)
-                                    : const Color(0xFFE0405C),
+                          SizedBox(width: 10.w),
+                          if (detail.live.change24h != null)
+                            Padding(
+                              padding: EdgeInsets.only(bottom: 6.h),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    (detail.live.change24h! >= 0)
+                                        ? Icons.trending_up
+                                        : Icons.trending_down,
+                                    size: 15.sp,
+                                    color: detail.live.change24h! >= 0
+                                        ? const Color(0xFF2ECC71)
+                                        : const Color(0xFFE0405C),
+                                  ),
+                                  SizedBox(width: 3.w),
+                                  Text(
+                                    detail.live.change24hLabel ?? '',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 13.sp,
+                                      fontWeight: FontWeight.w600,
+                                      color: detail.live.change24h! >= 0
+                                          ? const Color(0xFF2ECC71)
+                                          : const Color(0xFFE0405C),
+                                    ),
+                                  ),
+                                ],
                               ),
-                              SizedBox(width: 3.w),
-                              Text(
-                                '${(signal.change24hPercent ?? 0) >= 0 ? '+' : ''}${(signal.change24hPercent ?? 0).toStringAsFixed(2)}%',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 13.sp,
-                                  fontWeight: FontWeight.w600,
-                                  color: (signal.change24hPercent ?? 0) >= 0
-                                      ? const Color(0xFF2ECC71)
-                                      : const Color(0xFFE0405C),
-                                ),
-                              ),
-                            ],
-                          ),
+                            ),
+                        ],
+                      ),
+                    ] else ...[
+                      // Fallback from list item
+                      Text(
+                        listItem?.entry ?? '—',
+                        style: GoogleFonts.poppins(
+                          fontSize: 30.sp,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
 
                     SizedBox(height: 18.h),
 
-                    // ── Timeframe chips ──
+                    // ── Timeframe chips ─────────────────────────────
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: controller.timeframes.map((tf) {
@@ -207,7 +240,8 @@ class SignalDetailScreen extends GetView<SignalController> {
                           final isSelected =
                               controller.selectedTimeframe.value == tf;
                           return GestureDetector(
-                            onTap: () => controller.selectTimeframe(tf),
+                            onTap: () =>
+                                controller.selectTimeframe(tf),
                             child: Container(
                               width: 44.w,
                               height: 36.h,
@@ -216,7 +250,8 @@ class SignalDetailScreen extends GetView<SignalController> {
                                 color: isSelected
                                     ? const Color(0xFF7B1FE0)
                                     : const Color(0xFF1E1B2E),
-                                borderRadius: BorderRadius.circular(22.r),
+                                borderRadius:
+                                    BorderRadius.circular(22.r),
                               ),
                               child: Text(
                                 tf,
@@ -236,7 +271,7 @@ class SignalDetailScreen extends GetView<SignalController> {
 
                     SizedBox(height: 16.h),
 
-                    // ── Chart ──
+                    // ── Chart ───────────────────────────────────────
                     Container(
                       width: double.infinity,
                       padding: EdgeInsets.symmetric(
@@ -247,12 +282,22 @@ class SignalDetailScreen extends GetView<SignalController> {
                         border: Border.all(
                             color: Colors.white.withValues(alpha: 0.06)),
                       ),
-                      child: SignalCandleChart(signal: signal, height: 300),
+                      child: listItem != null
+                          ? SignalCandleChart(
+                              signal: listItem, height: 300)
+                          : SizedBox(
+                              height: 300.h,
+                              child: const Center(
+                                child: CircularProgressIndicator(
+                                    color: Color(0xFF7B1FE0),
+                                    strokeWidth: 2),
+                              ),
+                            ),
                     ),
 
                     SizedBox(height: 18.h),
 
-                    // ── Tab switcher under chart ──
+                    // ── Tab switcher ────────────────────────────────
                     Obx(() => Container(
                           padding: EdgeInsets.all(4.w),
                           decoration: BoxDecoration(
@@ -265,16 +310,20 @@ class SignalDetailScreen extends GetView<SignalController> {
                                 child: _TabButton(
                                   label: 'Summary',
                                   isSelected:
-                                      controller.selectedTabIndex.value == 0,
-                                  onTap: () => controller.selectDetailTab(0),
+                                      controller.selectedTabIndex.value ==
+                                          0,
+                                  onTap: () =>
+                                      controller.selectDetailTab(0),
                                 ),
                               ),
                               Expanded(
                                 child: _TabButton(
                                   label: 'Details',
                                   isSelected:
-                                      controller.selectedTabIndex.value == 1,
-                                  onTap: () => controller.selectDetailTab(1),
+                                      controller.selectedTabIndex.value ==
+                                          1,
+                                  onTap: () =>
+                                      controller.selectDetailTab(1),
                                 ),
                               ),
                             ],
@@ -283,34 +332,64 @@ class SignalDetailScreen extends GetView<SignalController> {
 
                     SizedBox(height: 18.h),
 
-                    // ── Tab content ──
-                    Obx(() => controller.selectedTabIndex.value == 0
-                        ? _SummaryTab(signal: signal, controller: controller)
-                        : _DetailsTab(signal: signal, controller: controller)),
+                    // ── Tab content ─────────────────────────────────
+                    Obx(() {
+                      if (isLoading && detail == null) {
+                        return const Center(
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(vertical: 40),
+                            child: CircularProgressIndicator(
+                                color: Color(0xFF7B1FE0), strokeWidth: 2),
+                          ),
+                        );
+                      }
+                      if (controller.detailError.value.isNotEmpty &&
+                          detail == null) {
+                        return Center(
+                          child: Padding(
+                            padding:
+                                EdgeInsets.symmetric(vertical: 30.h),
+                            child: Text(
+                              controller.detailError.value,
+                              style: GoogleFonts.poppins(
+                                  fontSize: 13.sp, color: Colors.white54),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        );
+                      }
+                      if (detail == null) return const SizedBox.shrink();
+
+                      return controller.selectedTabIndex.value == 0
+                          ? _SummaryTab(
+                              detail: detail, controller: controller)
+                          : _DetailsTab(
+                              detail: detail,
+                              listItem: listItem,
+                              controller: controller);
+                    }),
                   ],
                 ),
-              ),
-            ),
-          ],
-        ),
-      );
-    });
+              );
+            }),
+          ),
+        ],
+      ),
+    );
   }
 }
 
-// ====================================================================
-// Tab Button
-// ====================================================================
+// ────────────────────────────────────────────────────────────────────────────
+// Tab button
+// ────────────────────────────────────────────────────────────────────────────
+
 class _TabButton extends StatelessWidget {
   final String label;
   final bool isSelected;
   final VoidCallback onTap;
 
-  const _TabButton({
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
+  const _TabButton(
+      {required this.label, required this.isSelected, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -321,7 +400,9 @@ class _TabButton extends StatelessWidget {
         height: 44.h,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF2E2650) : Colors.transparent,
+          color: isSelected
+              ? const Color(0xFF2E2650)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(10.r),
         ),
         child: Text(
@@ -337,16 +418,21 @@ class _TabButton extends StatelessWidget {
   }
 }
 
-// ====================================================================
-// SUMMARY TAB
-// ====================================================================
+// ────────────────────────────────────────────────────────────────────────────
+// Summary Tab
+// ────────────────────────────────────────────────────────────────────────────
+
 class _SummaryTab extends StatelessWidget {
-  final SignalModel signal;
+  final SignalDetailModel detail;
   final SignalController controller;
-  const _SummaryTab({required this.signal, required this.controller});
+
+  const _SummaryTab({required this.detail, required this.controller});
 
   @override
   Widget build(BuildContext context) {
+    final stats = detail.summary.statistics;
+    final proTip = detail.summary.proTip;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -361,21 +447,22 @@ class _SummaryTab extends StatelessWidget {
         SizedBox(height: 12.h),
         _StatRow(
           label: 'Previous Close',
-          value:
-              '\$${(signal.previousClose ?? signal.entryPrice).toStringAsFixed(2)}',
+          value: stats.previousClose != null
+              ? stats.previousClose!.toStringAsFixed(2)
+              : '—',
         ),
         Divider(color: Colors.white.withValues(alpha: 0.08), height: 26.h),
         _StatRow(
           label: 'Opening Price',
-          value:
-              '\$${(signal.openingPrice ?? signal.entryPrice).toStringAsFixed(2)}',
+          value: stats.openingPrice != null
+              ? stats.openingPrice!.toStringAsFixed(2)
+              : '—',
         ),
         Divider(color: Colors.white.withValues(alpha: 0.08), height: 26.h),
         _StatRow(
-          label: '24H Returns %',
-          value:
-              '${(signal.change24hPercent ?? 0) >= 0 ? '+' : ''}${(signal.change24hPercent ?? 0).toStringAsFixed(2)}%',
-          valueColor: (signal.change24hPercent ?? 0) >= 0
+          label: '24H Returns',
+          value: stats.returns24hLabel ?? '—',
+          valueColor: (stats.returns24h ?? 0) >= 0
               ? const Color(0xFF2ECC71)
               : const Color(0xFFE0405C),
         ),
@@ -389,7 +476,8 @@ class _SummaryTab extends StatelessWidget {
             color: const Color(0xFF7B1FE0).withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(14.r),
             border: Border.all(
-                color: const Color(0xFF7B1FE0).withValues(alpha: 0.25)),
+                color:
+                    const Color(0xFF7B1FE0).withValues(alpha: 0.25)),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -402,7 +490,7 @@ class _SummaryTab extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Pro Tip',
+                      proTip.title,
                       style: GoogleFonts.poppins(
                         fontSize: 14.sp,
                         fontWeight: FontWeight.w600,
@@ -411,7 +499,7 @@ class _SummaryTab extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      'Move Stop Loss to Break Even (BE) after TP1 is hit to secure profits.',
+                      proTip.message,
                       style: GoogleFonts.poppins(
                         fontSize: 12.sp,
                         fontWeight: FontWeight.w400,
@@ -428,10 +516,285 @@ class _SummaryTab extends StatelessWidget {
 
         SizedBox(height: 22.h),
 
-        // Enable Alerts
-        _EnableAlertsButton(onTap: controller.onEnableAlertsPressed),
+        _EnableAlertsButton(
+          controller: controller,
+          signalId: detail.header.id,
+        ),
       ],
     );
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Details Tab
+// ────────────────────────────────────────────────────────────────────────────
+
+class _DetailsTab extends StatelessWidget {
+  final SignalDetailModel detail;
+  final SignalModel? listItem;
+  final SignalController controller;
+
+  const _DetailsTab(
+      {required this.detail,
+      required this.listItem,
+      required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    final overview = detail.details.overview;
+    final levels = detail.details.levels;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'SIGNAL OVERVIEW',
+          style: GoogleFonts.poppins(
+            fontSize: 10.sp,
+            fontWeight: FontWeight.w600,
+            color: Colors.white38,
+            letterSpacing: 1.2,
+          ),
+        ),
+        SizedBox(height: 8.h),
+
+        // Overview card
+        Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: const Color(0xFF1B1830),
+            borderRadius: BorderRadius.circular(16.r),
+          ),
+          padding: EdgeInsets.all(16.w),
+          child: Column(
+            children: [
+              Row(children: [
+                Expanded(
+                    child: _OverviewItem(
+                        label: 'ASSET', value: overview.asset)),
+                Expanded(
+                    child: _OverviewItem(
+                        label: 'MARKET',
+                        value: overview.marketCategory)),
+              ]),
+              SizedBox(height: 16.h),
+              Row(children: [
+                Expanded(
+                    child: _OverviewItem(
+                        label: 'SIGNAL TYPE',
+                        value: overview.tradeType)),
+                Expanded(
+                  child: _OverviewItem(
+                    label: 'DIRECTION',
+                    value: overview.direction,
+                    valueColor: overview.direction == 'BUY'
+                        ? const Color(0xFF2ECC71)
+                        : const Color(0xFFE0405C),
+                  ),
+                ),
+              ]),
+              SizedBox(height: 16.h),
+              Row(children: [
+                Expanded(
+                    child: _OverviewItem(
+                        label: 'RISK:REWARD',
+                        value: overview.riskRewardRatio ?? '—')),
+                Expanded(
+                  child: _OverviewItem(
+                    label: 'PUBLISHED',
+                    value: overview.publishedLabel.isNotEmpty
+                        ? overview.publishedLabel
+                        : overview.timeAgo,
+                  ),
+                ),
+              ]),
+            ],
+          ),
+        ),
+
+        SizedBox(height: 20.h),
+
+        Text(
+          'ENTRY & EXIT LEVELS',
+          style: GoogleFonts.poppins(
+            fontSize: 10.sp,
+            fontWeight: FontWeight.w600,
+            color: Colors.white38,
+            letterSpacing: 1.2,
+          ),
+        ),
+        SizedBox(height: 8.h),
+
+        // Levels card
+        Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: const Color(0xFF1B1830),
+            borderRadius: BorderRadius.circular(16.r),
+          ),
+          padding:
+              EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+          child: Column(
+            children: [
+              _LevelRow(
+                icon: Icons.flag_outlined,
+                iconColor: const Color(0xFF9B6BFF),
+                label: 'ENTRY PRICE',
+                priceLabel: levels.entry.priceLabel,
+                tag: 'TRADE',
+                tagColor: const Color(0xFF9B6BFF),
+              ),
+              Divider(
+                  color: Colors.white.withValues(alpha: 0.08),
+                  thickness: 0.5),
+              _LevelRow(
+                icon: Icons.warning_amber_rounded,
+                iconColor: const Color(0xFFE0405C),
+                label: 'STOP LOSS',
+                priceLabel: levels.stopLoss.priceLabel,
+                percentLabel: levels.stopLoss.percentLabel,
+                tag: 'SL',
+                tagColor: const Color(0xFFE0405C),
+              ),
+              ...levels.takeProfits.map((tp) => Column(
+                    children: [
+                      Divider(
+                          color: Colors.white.withValues(alpha: 0.08),
+                          thickness: 0.5),
+                      _LevelRow(
+                        icon: tp.isHit
+                            ? Icons.check_circle_outline
+                            : Icons.radio_button_unchecked,
+                        iconColor: const Color(0xFF2ECC71),
+                        label: tp.label,
+                        priceLabel: tp.priceLabel,
+                        percentLabel: tp.percentLabel,
+                        tag: tp.isHit ? '✓ HIT' : 'TP',
+                        tagColor: const Color(0xFF2ECC71),
+                      ),
+                    ],
+                  )),
+            ],
+          ),
+        ),
+
+        if (detail.details.notes.isNotEmpty) ...[
+          SizedBox(height: 20.h),
+          Text(
+            'NOTES',
+            style: GoogleFonts.poppins(
+              fontSize: 10.sp,
+              fontWeight: FontWeight.w600,
+              color: Colors.white38,
+              letterSpacing: 1.2,
+            ),
+          ),
+          SizedBox(height: 8.h),
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.all(14.w),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1B1830),
+              borderRadius: BorderRadius.circular(14.r),
+            ),
+            child: Text(
+              detail.details.notes,
+              style: GoogleFonts.poppins(
+                fontSize: 12.sp,
+                color: Colors.white70,
+                height: 1.5,
+              ),
+            ),
+          ),
+        ],
+
+        SizedBox(height: 22.h),
+
+        _EnableAlertsButton(
+          controller: controller,
+          signalId: detail.header.id,
+        ),
+      ],
+    );
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Shared widgets
+// ────────────────────────────────────────────────────────────────────────────
+
+class _LoadingRow extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 40.h,
+      width: 120.w,
+      decoration: BoxDecoration(
+        color: const Color(0xFF1B1830),
+        borderRadius: BorderRadius.circular(8.r),
+      ),
+    );
+  }
+}
+
+class _EnableAlertsButton extends StatelessWidget {
+  final SignalController controller;
+  final String signalId;
+
+  const _EnableAlertsButton(
+      {required this.controller, required this.signalId});
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() => GestureDetector(
+          onTap: controller.onEnableAlertsPressed,
+          child: Container(
+            width: double.infinity,
+            height: 54.h,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: controller.alertsEnabled.value
+                    ? [const Color(0xFF1A6B3A), const Color(0xFF0F3A1A)]
+                    : [
+                        const Color(0xFF9B2BFF),
+                        const Color(0xFF6A1BFF)
+                      ],
+              ),
+              borderRadius: BorderRadius.circular(16.r),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF8A2BE2).withValues(alpha: 0.35),
+                  blurRadius: 16,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  controller.alertsEnabled.value
+                      ? Icons.notifications_off_outlined
+                      : Icons.notifications_active_outlined,
+                  size: 16.sp,
+                  color: Colors.white,
+                ),
+                SizedBox(width: 8.w),
+                Text(
+                  controller.alertsEnabled.value
+                      ? 'Disable Alerts'
+                      : 'Enable Alerts',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ));
   }
 }
 
@@ -439,7 +802,9 @@ class _StatRow extends StatelessWidget {
   final String label;
   final String value;
   final Color? valueColor;
-  const _StatRow({required this.label, required this.value, this.valueColor});
+
+  const _StatRow(
+      {required this.label, required this.value, this.valueColor});
 
   @override
   Widget build(BuildContext context) {
@@ -461,206 +826,13 @@ class _StatRow extends StatelessWidget {
   }
 }
 
-// ====================================================================
-// DETAILS TAB
-// ====================================================================
-class _DetailsTab extends StatelessWidget {
-  final SignalModel signal;
-  final SignalController controller;
-  const _DetailsTab({required this.signal, required this.controller});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Section header
-        Text('SIGNAL OVERVIEW',
-            style: GoogleFonts.poppins(
-                fontSize: 10.sp,
-                fontWeight: FontWeight.w600,
-                color: Colors.white38,
-                letterSpacing: 1.2)),
-        SizedBox(height: 8.h),
-
-        // Signal Overview card
-        Container(
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: const Color(0xFF1B1830),
-            borderRadius: BorderRadius.circular(16.r),
-          ),
-          padding: EdgeInsets.all(16.w),
-          child: Column(
-            children: [
-              Row(children: [
-                Expanded(
-                    child: _OverviewItem(label: 'ASSET', value: signal.pair)),
-                Expanded(
-                    child: _OverviewItem(
-                        label: 'MARKET', value: signal.subtitleLabel)),
-              ]),
-              SizedBox(height: 16.h),
-              Row(children: [
-                Expanded(
-                    child: _OverviewItem(
-                        label: 'SIGNAL TYPE', value: signal.tradeType)),
-                Expanded(
-                  child: _OverviewItem(
-                    label: 'DIRECTION',
-                    value: signal.type == SignalType.buy ? 'BUY' : 'SELL',
-                    valueColor: signal.type == SignalType.buy
-                        ? const Color(0xFF2ECC71)
-                        : const Color(0xFFE0405C),
-                  ),
-                ),
-              ]),
-              SizedBox(height: 16.h),
-              Row(children: [
-                Expanded(
-                    child: _OverviewItem(
-                        label: 'RISK:REWARD', value: signal.riskReward)),
-                Expanded(
-                  child: _OverviewItem(
-                    label: 'PUBLISHED',
-                    value: signal.publishedDate.isEmpty
-                        ? signal.timeAgo
-                        : signal.publishedDate,
-                  ),
-                ),
-              ]),
-            ],
-          ),
-        ),
-
-        SizedBox(height: 20.h),
-
-        // Section header
-        Text('ENTRY & EXIT LEVELS',
-            style: GoogleFonts.poppins(
-                fontSize: 10.sp,
-                fontWeight: FontWeight.w600,
-                color: Colors.white38,
-                letterSpacing: 1.2)),
-        SizedBox(height: 8.h),
-
-        // Levels card
-        Container(
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: const Color(0xFF1B1830),
-            borderRadius: BorderRadius.circular(16.r),
-          ),
-          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-          child: Column(
-            children: [
-              _LevelRow(
-                icon: Icons.flag_outlined,
-                iconColor: const Color(0xFF9B6BFF),
-                label: 'ENTRY PRICE',
-                price: signal.entryPrice,
-                tag: 'TRADE',
-                tagColor: const Color(0xFF9B6BFF),
-              ),
-              Divider(
-                  color: Colors.white.withValues(alpha: 0.08), thickness: 0.5),
-              _LevelRow(
-                icon: Icons.warning_amber_rounded,
-                iconColor: const Color(0xFFE0405C),
-                label: 'STOP LOSS',
-                price: signal.stopLoss,
-                percent: signal.stopLossPercent,
-                tag: 'SL',
-                tagColor: const Color(0xFFE0405C),
-              ),
-              ...signal.takeProfits.map((tp) {
-                final percent =
-                    ((tp.price - signal.entryPrice) / signal.entryPrice) * 100;
-                return Column(children: [
-                  Divider(
-                      color: Colors.white.withValues(alpha: 0.08),
-                      thickness: 0.5),
-                  _LevelRow(
-                    icon: tp.isHit
-                        ? Icons.check_circle_outline
-                        : Icons.radio_button_unchecked,
-                    iconColor: const Color(0xFF2ECC71),
-                    label: tp.label.toUpperCase(),
-                    price: tp.price,
-                    percent: percent,
-                    tag: tp.isHit ? '✓ HIT' : 'TP',
-                    tagColor: const Color(0xFF2ECC71),
-                  ),
-                ]);
-              }),
-            ],
-          ),
-        ),
-
-        SizedBox(height: 22.h),
-
-        // Enable Alerts
-        _EnableAlertsButton(onTap: controller.onEnableAlertsPressed),
-      ],
-    );
-  }
-}
-
-// ====================================================================
-// Shared widgets
-// ====================================================================
-
-class _EnableAlertsButton extends StatelessWidget {
-  final VoidCallback onTap;
-  const _EnableAlertsButton({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        height: 54.h,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF9B2BFF), Color(0xFF6A1BFF)],
-          ),
-          borderRadius: BorderRadius.circular(16.r),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF8A2BE2).withValues(alpha: 0.35),
-              blurRadius: 16,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.notifications_active_outlined,
-                size: 16.sp, color: Colors.white),
-            SizedBox(width: 8.w),
-            Text(
-              'Enable Alerts',
-              style: GoogleFonts.poppins(
-                fontSize: 14.sp,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _OverviewItem extends StatelessWidget {
   final String label;
   final String value;
   final Color? valueColor;
-  const _OverviewItem({required this.label, required this.value, this.valueColor});
+
+  const _OverviewItem(
+      {required this.label, required this.value, this.valueColor});
 
   @override
   Widget build(BuildContext context) {
@@ -688,8 +860,8 @@ class _LevelRow extends StatelessWidget {
   final IconData icon;
   final Color iconColor;
   final String label;
-  final double price;
-  final double? percent;
+  final String priceLabel;
+  final String? percentLabel;
   final String tag;
   final Color tagColor;
 
@@ -697,10 +869,10 @@ class _LevelRow extends StatelessWidget {
     required this.icon,
     required this.iconColor,
     required this.label,
-    required this.price,
+    required this.priceLabel,
     required this.tag,
     required this.tagColor,
-    this.percent,
+    this.percentLabel,
   });
 
   @override
@@ -726,7 +898,7 @@ class _LevelRow extends StatelessWidget {
                       fontSize: 9.sp,
                       fontWeight: FontWeight.w400,
                       color: Colors.white54)),
-              Text('\$${price.toStringAsFixed(2)}',
+              Text(priceLabel,
                   style: GoogleFonts.poppins(
                       fontSize: 13.sp,
                       fontWeight: FontWeight.w700,
@@ -734,13 +906,13 @@ class _LevelRow extends StatelessWidget {
             ],
           ),
           const Spacer(),
-          if (percent != null) ...[
+          if (percentLabel != null) ...[
             Text(
-              '${percent! >= 0 ? '+' : ''}${percent!.toStringAsFixed(2)}%',
+              percentLabel!,
               style: GoogleFonts.poppins(
                   fontSize: 11.sp,
                   fontWeight: FontWeight.w600,
-                  color: percent! >= 0
+                  color: percentLabel!.startsWith('+')
                       ? const Color(0xFF2ECC71)
                       : const Color(0xFFE0405C)),
             ),

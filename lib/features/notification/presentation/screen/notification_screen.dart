@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/routes/app_routes.dart';
+import '../../../profile/widget/app_profile_avatar.dart';
 import '../controller/notification_controller.dart';
 import '../widget/notification_list.dart';
 
@@ -63,19 +64,7 @@ class NotificationScreen extends GetView<NotificationController> {
                         onTap: () {
                           Get.toNamed(AppRoutes.profilePage);
                         },
-                        child: ClipOval(
-                          child: Image.network(
-                            "https://media.sproutsocial.com/uploads/2022/06/profile-picture.jpeg",
-                            width: 38.w,
-                            height: 38.w,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(
-                              width: 38.w,
-                              height: 38.w,
-                              color: const Color(0xFF7B1FE0),
-                            ),
-                          ),
-                        ),
+                        child: const AppProfileAvatar(),
                       ),
                     ],
                   ),

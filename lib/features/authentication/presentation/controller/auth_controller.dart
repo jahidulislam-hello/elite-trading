@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../../core/di/dependency_injection.dart';
 import '../../../../core/exceptions/app_exceptions.dart';
 import '../../../../core/routes/app_routes.dart';
 import '../../../../core/services/storage_service.dart';
@@ -148,7 +149,13 @@ class AuthController extends GetxController {
       currentUser.value = result.user;
 
       _showSuccess('Welcome back, ${result.user.displayName}!');
-      Get.offAllNamed(AppRoutes.subscripFirstPage);
+
+      // Skip subscription gate when user already has an active/trial plan
+      final status = result.user.subscriptionStatus.toLowerCase();
+      final hasActiveSub = status == 'active' || status == 'trial';
+      Get.offAllNamed(
+        hasActiveSub ? AppRoutes.bottomNavScreen : AppRoutes.subscripFirstPage,
+      );
     } on AppException catch (e) {
       _showError(_friendlyError(e));
     } catch (e) {
@@ -302,6 +309,11 @@ class AuthController extends GetxController {
     currentUser.value = null;
     _tempToken.value = '';
     Get.offAllNamed(AppRoutes.signInScreen);
+
+    // Deferred so the tab widgets are unmounted before their controllers go.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      DependencyInjection.clearSessionControllers();
+    });
   }
 
   // ─── HELPERS ──────────────────────────────────────────────────────────────

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../../core/exceptions/app_exceptions.dart';
+import '../../../bottom_nab_bar/presentation/controller/bottom_nav_controller.dart';
 import '../../data/model/plan_model.dart';
 import '../../data/model/subscription_models.dart';
 import '../../subscription_service.dart';
@@ -34,17 +35,101 @@ class SubscriptionsController extends GetxController {
 
   // ─── Trial status ────────────────────────────────────────────────────────
   final Rx<TrialStatusModel?> trialStatus = Rx<TrialStatusModel?>(null);
+  final Rx<TrialConfigModel?> trialConfig = Rx<TrialConfigModel?>(null);
   final RxBool isTrialEligible = true.obs;
 
-  // ─── Comparison rows (static, matching backend features) ─────────────────
-  final List<ComparisonRow> comparisonRows = [
-    ComparisonRow('Forex Signals',     [false, true, true]),
-    ComparisonRow('Crypto Signals',    [true, false, true]),
-    ComparisonRow('Gold & Metals',     [false, true, true]),
-    ComparisonRow('Index Signals',     [false, false, true]),
-    ComparisonRow('Priority Alerts',   [false, false, true]),
-    ComparisonRow('VIP Community',     [false, false, true]),
-  ];
+  // ─── Comparison table (derived from the subscription API) ────────────────
+
+  /// Every row is built from the plan documents returned by
+  /// GET /api/v1/subscription, so the ticks always match the backend.
+  List<PlanComparisonRow> get comparisonRows {
+    final list = plans.toList();
+    if (list.isEmpty) return const [];
+
+    final rows = <PlanComparisonRow>[];
+
+    PlanComparisonRow flagRow(
+      String label,
+      bool Function(SubscriptionPlan plan) hasFlag,
+    ) =>
+        PlanComparisonRow(
+          label,
+          list
+              .map((p) => PlanComparisonCell(included: hasFlag(p)))
+              .toList(),
+        );
+
+    void addFlagRow(
+      String label,
+      bool Function(SubscriptionPlan plan) hasFlag,
+    ) {
+      if (list.any(hasFlag)) rows.add(flagRow(label, hasFlag));
+    }
+
+    // Signal categories, in the order the API lists them.
+    for (final category in _distinctValues((p) => p.allowedCategories)) {
+      addFlagRow(
+        '$category signals',
+        (plan) => plan.allowedCategories
+            .any((c) => c.toLowerCase() == category.toLowerCase()),
+      );
+    }
+
+    // Signal types (Scalp / Swing / Long-term).
+    for (final type in _distinctValues((p) => p.signalTypes)) {
+      addFlagRow(
+        '$type signals',
+        (plan) =>
+            plan.signalTypes.any((t) => t.toLowerCase() == type.toLowerCase()),
+      );
+    }
+
+    addFlagRow('Gold & metals', (plan) => plan.includesGoldSignals);
+    addFlagRow('Technical analysis', (plan) => plan.includesTechnicalAnalysis);
+    addFlagRow('Market sentiment', (plan) => plan.includesMarketSentiment);
+    addFlagRow('Economic calendar', (plan) => plan.includesEconomicCalendar);
+
+    rows.add(PlanComparisonRow(
+      'Signals per day',
+      list
+          .map((p) => PlanComparisonCell(
+                included: p.maxSignalsPerDay > 0,
+                text: '${p.maxSignalsPerDay}',
+              ))
+          .toList(),
+    ));
+
+    rows.add(PlanComparisonRow(
+      'Support',
+      list
+          .map((p) => PlanComparisonCell(
+                included: p.support.isNotEmpty,
+                text: _capitalize(p.support),
+              ))
+          .toList(),
+    ));
+
+    return rows;
+  }
+
+  /// Unique, order-preserving values collected across every plan.
+  List<String> _distinctValues(
+    List<String> Function(SubscriptionPlan plan) selector,
+  ) {
+    final seen = <String, String>{};
+    for (final plan in plans) {
+      for (final raw in selector(plan)) {
+        final value = raw.trim();
+        if (value.isEmpty) continue;
+        seen.putIfAbsent(value.toLowerCase(), () => _capitalize(value));
+      }
+    }
+    return seen.values.toList();
+  }
+
+  String _capitalize(String value) => value.isEmpty
+      ? value
+      : '${value[0].toUpperCase()}${value.substring(1)}';
 
   void selectPlan(String id) {
     selectedPlanId.value = id;
@@ -69,13 +154,16 @@ class SubscriptionsController extends GetxController {
               hasUsedFreeTrial: false,
               canStartFreeTrial: true,
             )),
+        _loadTrialConfigOrNull(),
       ]);
 
       final fetchedPlans = results[0] as List<SubscriptionPlan>;
       final fetchedTrial = results[1] as TrialStatusModel;
+      final fetchedConfig = results[2] as TrialConfigModel?;
 
       plans.value = fetchedPlans;
       trialStatus.value = fetchedTrial;
+      if (fetchedConfig != null) trialConfig.value = fetchedConfig;
       isTrialEligible.value = fetchedTrial.canStartFreeTrial;
 
       // Auto-select the first plan (or VIP if present)
@@ -100,115 +188,252 @@ class SubscriptionsController extends GetxController {
       _showError('Please select a plan to continue.');
       return;
     }
+    _openCheckout();
+  }
+
+  void _openCheckout() {
+    clearCoupon();
     currentStep.value = 3;
+    // Trial eligibility decides which buttons the payment step shows, so make
+    // sure it reflects the server before the screen is built.
+    refreshTrialStatus();
     Get.toNamed(AppRoutes.addPrementScreen);
+  }
+
+  // ─── Trial eligibility ────────────────────────────────────────────────────
+
+  final RxBool isTrialStatusLoading = false.obs;
+
+  /// Reason the trial button is unavailable, straight from the backend
+  /// eligibility check (already used trial, active paid plan, trial disabled).
+  String get trialUnavailableReason =>
+      trialStatus.value?.reason ??
+      'Free trial is not available for this account.';
+
+  Future<void> refreshTrialStatus() async {
+    isTrialStatusLoading.value = true;
+    try {
+      final status = await _service.getTrialStatus();
+      trialStatus.value = status;
+      isTrialEligible.value = status.canStartFreeTrial;
+      final config = await _loadTrialConfigOrNull();
+      if (config != null) trialConfig.value = config;
+    } catch (e, s) {
+      debugPrint('refreshTrialStatus failed: $e\n$s');
+    } finally {
+      isTrialStatusLoading.value = false;
+    }
+  }
+
+  Future<TrialConfigModel?> _loadTrialConfigOrNull() async {
+    try {
+      return await _service.getTrialConfig();
+    } catch (e, s) {
+      debugPrint('getTrialConfig failed: $e\n$s');
+      return null;
+    }
+  }
+
+  // ─── Welcome offer (promo vs standard trial) ──────────────────────────────
+  //
+  // Backend rule (backend/src/utils/welcomeTrial.ts): a verified user whose
+  // verificationOrder is within promoLimit gets promoDuration; everyone after
+  // the promo window gets trialDuration. Both durations and the limit are
+  // admin-editable through trial-config, so every label below comes from the
+  // API — never from a value baked into the app.
+
+  /// True when this account falls inside the promo window.
+  bool get isPromoTrial {
+    final status = trialStatus.value;
+    if (status != null && status.accessType != null) {
+      return status.isPromoEligible;
+    }
+    // Older backends don't return the offer fields, so fall back to whether
+    // promo seats are still open.
+    return trialConfig.value?.isPromoStillOpen ?? false;
+  }
+
+  /// How many verified members the promo window covers, or 0 when unknown.
+  int get promoLimit {
+    final status = trialStatus.value;
+    if (status != null && status.promoLimit > 0) return status.promoLimit;
+    return trialConfig.value?.promoLimit ?? 0;
+  }
+
+  /// Free days this account gets, or 0 while the config is unknown.
+  int get trialDays {
+    final status = trialStatus.value;
+    if (status != null && status.trialDays > 0) return status.trialDays;
+
+    final config = trialConfig.value;
+    if (config == null) return 0;
+    if (isPromoTrial) return config.promoDays;
+    return config.trialOn ? config.trialDays : 0;
+  }
+
+  /// The admin-authored label for the offer exactly as configured, e.g.
+  /// '1 Month (30 Days)' or '3 Days'. Empty while it is still unknown.
+  String get trialDurationLabel {
+    final serverLabel = trialStatus.value?.trialDurationLabel?.trim();
+    if (serverLabel != null && serverLabel.isNotEmpty) return serverLabel;
+
+    final config = trialConfig.value;
+    if (config == null) return '';
+    if (isPromoTrial) return config.promoDuration;
+    return config.trialOn ? config.trialDuration : '';
+  }
+
+  /// Same label without any parenthetical, so headlines stay short:
+  /// '1 Month (30 Days)' → '1 Month'.
+  String get trialDurationShortLabel {
+    final label = trialDurationLabel;
+    final trimmed = label.replaceAll(RegExp(r'\s*\([^)]*\)'), '').trim();
+    return trimmed.isEmpty ? label : trimmed;
+  }
+
+  /// Compact headline form, e.g. '1 Month Free' or '3 Days Free'.
+  String get trialHeadlineLabel {
+    final label = trialDurationShortLabel;
+    return label.isEmpty ? 'Free Trial' : '$label Free';
+  }
+
+  /// Short form used in tight summary rows, e.g. '3 Days free'.
+  String get trialShortLabel {
+    if (!isTrialEligible.value) return 'Not available';
+    final label = trialDurationShortLabel;
+    return label.isEmpty ? 'Available' : '$label free';
+  }
+
+  /// Explains which offer applies and why.
+  String get trialOfferHeadline {
+    if (!isTrialEligible.value) return 'Free trial unavailable';
+    final label = trialDurationShortLabel;
+    if (label.isEmpty) return 'Free Trial Available';
+    return isPromoTrial
+        ? 'Launch Offer — $label Free'
+        : '$label Free Trial Available';
+  }
+
+  String get trialOfferDetail {
+    if (!isTrialEligible.value) return trialUnavailableReason;
+
+    final label = trialDurationShortLabel;
+    final buffer = StringBuffer(
+      label.isEmpty
+          ? 'No payment is taken today — billing starts when your free trial ends.'
+          : 'You get $label free. No payment is taken today — billing starts '
+              'when the trial ends.',
+    );
+
+    final config = trialConfig.value;
+    if (config != null && config.promoLimit > 0) {
+      if (isPromoTrial) {
+        final seatsLeft = config.promoSeatsLeft;
+        buffer.write(
+          seatsLeft > 0
+              ? ' You are one of the first ${config.promoLimit} verified members'
+                  ' ($seatsLeft ${seatsLeft == 1 ? 'spot' : 'spots'} left).'
+              : ' You are one of the first ${config.promoLimit} verified members.',
+        );
+      } else if (config.promoOn && config.promoDuration.isNotEmpty) {
+        buffer.write(
+          ' The ${config.promoDuration} launch offer for the first'
+          ' ${config.promoLimit} members is now closed.',
+        );
+      }
+    }
+
+    return buffer.toString();
   }
 
   // ─── Payment / Coupon ─────────────────────────────────────────────────────
 
-  final Rx<PaymentMethod> selectedPaymentMethod = PaymentMethod.card.obs;
-
   final TextEditingController couponController = TextEditingController();
-  final RxBool isCouponApplied = false.obs;
-  final RxDouble couponDiscount = 0.0.obs;
-  final RxString couponCode = ''.obs;
+  final Rx<CouponModel?> appliedCoupon = Rx<CouponModel?>(null);
   final RxBool isCouponLoading = false.obs;
+  final RxString couponError = ''.obs;
 
-  final TextEditingController cardNumberController = TextEditingController();
-  final TextEditingController cardHolderController = TextEditingController();
-  final TextEditingController expiryController = TextEditingController();
-  final TextEditingController cvcController = TextEditingController();
+  double get couponDiscount {
+    final coupon = appliedCoupon.value;
+    final price = _selectedPlan.value?.price ?? 0.0;
+    return coupon == null ? 0.0 : coupon.discountAmount(price);
+  }
 
-  void selectPaymentMethod(PaymentMethod method) =>
-      selectedPaymentMethod.value = method;
+  void clearCoupon() {
+    couponController.clear();
+    appliedCoupon.value = null;
+    couponError.value = '';
+  }
 
-  /// Validates coupon against the backend by doing a dry-run purchase.
-  /// The backend will return the discounted amount in the purchase result.
+  /// Validates the code through POST /api/v1/coupon/validate and mirrors the
+  /// backend's plan-applicability rule so the discount shown here matches what
+  /// initiateSubscriptionPurchase will charge.
   Future<void> applyCoupon() async {
     final code = couponController.text.trim().toUpperCase();
+    final plan = _selectedPlan.value;
     if (code.isEmpty) {
-      _showError('Please enter a coupon code.');
+      couponError.value = 'Please enter a coupon code.';
       return;
     }
-    if (_selectedPlan.value == null) {
-      _showError('Please select a plan first.');
+    if (plan == null) {
+      couponError.value = 'Please select a plan first.';
       return;
     }
 
     isCouponLoading.value = true;
+    couponError.value = '';
     try {
-      // We validate by attempting a purchase preview — the backend
-      // validates coupon applicability and returns finalAmount.
-      final result = await _service.initiatePurchase(
-        subscriptionId: _selectedPlan.value!.id,
-        isFreeTrial: false,
-        couponCode: code,
+      final coupon = await _service.validateCoupon(code);
+
+      if (!coupon.appliesToPlan(plan.name)) {
+        appliedCoupon.value = null;
+        couponError.value =
+            'This coupon is not applicable to the ${plan.name} plan.';
+        return;
+      }
+
+      appliedCoupon.value = coupon;
+      _showSuccess(
+        'Coupon applied — ${coupon.discountLabel} '
+        '(-\$${coupon.discountAmount(plan.price).toStringAsFixed(2)})',
       );
-
-      // Coupon was accepted — record discount
-      final original = _selectedPlan.value!.price;
-      final discounted = result.finalAmount;
-      final discount = original - discounted;
-
-      isCouponApplied.value = true;
-      couponDiscount.value = discount;
-      couponCode.value = code;
-
-      _showSuccess('Coupon applied! -\$${discount.toStringAsFixed(2)} off');
     } on AppException catch (e) {
-      isCouponApplied.value = false;
-      couponDiscount.value = 0.0;
-      _showError(e.message);
-    } catch (_) {
-      isCouponApplied.value = false;
-      couponDiscount.value = 0.0;
-      _showError('Invalid coupon code.');
+      appliedCoupon.value = null;
+      couponError.value = e.message;
+    } catch (e, s) {
+      debugPrint('applyCoupon failed: $e\n$s');
+      appliedCoupon.value = null;
+      couponError.value = 'Invalid coupon code.';
     } finally {
       isCouponLoading.value = false;
     }
   }
 
-  double get dueToday {
-    if (isTrialEligible.value) return 0.0;
-    final price = _selectedPlan.value?.price ?? 0.0;
-    return isCouponApplied.value ? (price - couponDiscount.value) : price;
-  }
+  double get planPrice => _selectedPlan.value?.price ?? 0.0;
 
-  /// Called from AddPrementScreen "Continue" button.
-  /// - Free trial eligible  → go to ConformTrial (step 4) to confirm
-  /// - NOT trial eligible   → purchase directly via Stripe (skip confirm screen)
-  void onAddPaymentContinuePressed() {
-    if (_selectedPlan.value == null) {
-      _showError('Please select a plan first.');
-      return;
-    }
-    if (isTrialEligible.value) {
-      // Free trial path → go to confirm screen
-      currentStep.value = 4;
-      Get.toNamed(AppRoutes.conformTrial);
-    } else {
-      // Paid plan path → purchase directly
-      onPaidPurchasePressed();
-    }
+  double get dueToday {
+    final coupon = appliedCoupon.value;
+    return coupon == null ? planPrice : coupon.discountedPrice(planPrice);
   }
 
   // ─── Confirm Trial / Purchase ─────────────────────────────────────────────
 
   final RxBool isPurchaseLoading = false.obs;
 
-  /// First charge date string — computed from trial status / plan
+  /// First charge date, projected from the configured trial length. Empty when
+  /// the trial length isn't known yet, so screens can omit the date rather than
+  /// show a guessed one.
   String get firstChargeDate {
     final ts = trialStatus.value;
     if (ts != null && ts.trialEndDate != null) {
-      final d = ts.trialEndDate!;
-      const months = [
-        'Jan','Feb','Mar','Apr','May','Jun',
-        'Jul','Aug','Sep','Oct','Nov','Dec'
-      ];
-      return '${months[d.month - 1]} ${d.day}, ${d.year}';
+      return _formatDate(ts.trialEndDate!);
     }
-    // Default: 30 days from now
-    final d = DateTime.now().add(const Duration(days: 30));
+    final days = trialDays;
+    if (days <= 0) return '';
+    return _formatDate(DateTime.now().add(Duration(days: days)));
+  }
+
+  String _formatDate(DateTime d) {
     const months = [
       'Jan','Feb','Mar','Apr','May','Jun',
       'Jul','Aug','Sep','Oct','Nov','Dec'
@@ -216,10 +441,15 @@ class SubscriptionsController extends GetxController {
     return '${months[d.month - 1]} ${d.day}, ${d.year}';
   }
 
-  /// Called from ConformTrial "Start Free Trial" button.
+  /// Starts the free trial through POST /subscription/purchase/initiate with
+  /// isFreeTrial: true — the backend activates it without any payment.
   Future<void> onStartFreeTrialPressed() async {
     if (_selectedPlan.value == null) {
       _showError('No plan selected.');
+      return;
+    }
+    if (!isTrialEligible.value) {
+      _showError(trialUnavailableReason);
       return;
     }
     await _purchase(isFreeTrial: true);
@@ -240,7 +470,7 @@ class SubscriptionsController extends GetxController {
       final result = await _service.initiatePurchase(
         subscriptionId: _selectedPlan.value!.id,
         isFreeTrial: isFreeTrial,
-        couponCode: isCouponApplied.value ? couponCode.value : null,
+        couponCode: isFreeTrial ? null : appliedCoupon.value?.code,
       );
 
       if (result.paymentRequired && result.checkoutUrl != null) {
@@ -249,25 +479,27 @@ class SubscriptionsController extends GetxController {
         Get.to(
           () => StripeWebViewScreen(
             checkoutUrl: result.checkoutUrl!,
-            onSuccess: () {
-              _showSuccess('Payment successful! Subscription activated.');
-              Get.offAllNamed(AppRoutes.bottomNavScreen);
-            },
-            onCancel: () {
-              _showError('Payment cancelled. You can try again anytime.');
-              Get.back();
-            },
+            onSuccess: () =>
+                _goHomeAfterPurchase('Payment successful! Subscription activated.'),
+            // The checkout screen pops itself; step back to the plan list so
+            // another plan can be picked.
+            onCancel: _returnToPlanList,
           ),
           transition: Transition.upToDown,
         );
       } else {
         // ── Free trial or 100% coupon → already activated ────────────────
-        _showSuccess(
-          isFreeTrial
-              ? 'Free trial activated! Enjoy ${result.trialDays ?? 2} days free.'
-              : 'Subscription activated successfully!',
+        // The backend echoes the granted length; fall back to the configured
+        // offer, and to a length-free message when neither is known.
+        final grantedDays = result.trialDays ?? trialDays;
+        _goHomeAfterPurchase(
+          !isFreeTrial
+              ? 'Subscription activated successfully!'
+              : grantedDays > 0
+                  ? 'Free trial activated! Enjoy $grantedDays '
+                      '${grantedDays == 1 ? 'day' : 'days'} free.'
+                  : 'Free trial activated!',
         );
-        Get.offAllNamed(AppRoutes.bottomNavScreen);
       }
     } on AppException catch (e) {
       _showError(e.message);
@@ -276,6 +508,38 @@ class SubscriptionsController extends GetxController {
     } finally {
       isPurchaseLoading.value = false;
     }
+  }
+
+  /// Sends the user back to the plan list after an abandoned checkout.
+  ///
+  /// The predicate also stops at the first route, so this can never empty the
+  /// stack if the plan screen isn't below us.
+  void _returnToPlanList() {
+    currentStep.value = 2;
+    Get.until((route) =>
+        route.settings.name == AppRoutes.choosePlanScreen || route.isFirst);
+    _showError('Payment cancelled. You can try again anytime.');
+  }
+
+  /// Returns to the home tabs after a completed purchase.
+  ///
+  /// Snackbars are GetX routes, so any open one has to be closed *before*
+  /// offAllNamed — otherwise its barrier survives the stack replacement and
+  /// silently absorbs every tap on the nav bar.
+  void _goHomeAfterPurchase(String message) {
+    if (Get.isSnackbarOpen) Get.closeAllSnackbars();
+    refreshTrialStatus();
+    Get.offAllNamed(AppRoutes.bottomNavScreen);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Access level just changed, so every tab needs fresh data.
+      if (Get.isRegistered<BottomNavController>()) {
+        final nav = Get.find<BottomNavController>();
+        nav.selectedIndex.value = 0;
+        nav.refreshAllTabs();
+      }
+      _showSuccess(message);
+    });
   }
 
   // ─── Snackbar helpers ────────────────────────────────────────────────────
@@ -315,10 +579,6 @@ class SubscriptionsController extends GetxController {
   @override
   void onClose() {
     couponController.dispose();
-    cardNumberController.dispose();
-    cardHolderController.dispose();
-    expiryController.dispose();
-    cvcController.dispose();
     super.onClose();
   }
 }

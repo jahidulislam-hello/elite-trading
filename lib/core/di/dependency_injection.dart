@@ -49,4 +49,15 @@ class DependencyInjection {
   static void clear() {
     Get.deleteAll(force: true);
   }
+
+  /// Drops the permanent tab-shell controllers (see [BottomNavBinding]) so the
+  /// next signed-in user starts from empty state instead of cached data.
+  static void clearSessionControllers() {
+    Get.delete<BottomNavController>(force: true);
+    Get.delete<SignalController>(force: true);
+    Get.delete<NotificationController>(force: true);
+    Get.delete<PostController>(force: true);
+    Get.delete<HistoryContainer>(force: true);
+    Get.delete<ProfileController>(force: true);
+  }
 }

@@ -100,7 +100,12 @@ class ConformTrial extends GetView<SubscriptionsController> {
                                         color: const Color(0xFFE0A11F)),
                                     SizedBox(width: 6.w),
                                     Text(
-                                      'FOUNDING MEMBER · TOP 100',
+                                      !controller.isPromoTrial
+                                          ? 'FREE TRIAL'
+                                          : controller.promoLimit > 0
+                                              ? 'FOUNDING MEMBER · TOP '
+                                                  '${controller.promoLimit}'
+                                              : 'FOUNDING MEMBER',
                                       style: GoogleFonts.poppins(
                                         fontSize: 9.sp,
                                         fontWeight: FontWeight.w600,
@@ -112,7 +117,7 @@ class ConformTrial extends GetView<SubscriptionsController> {
                                 ),
                               ),
                               Text(
-                                '1 Month Free',
+                                controller.trialHeadlineLabel,
                                 style: GoogleFonts.poppins(
                                   fontSize: 26.sp,
                                   fontWeight: FontWeight.w700,
@@ -121,7 +126,12 @@ class ConformTrial extends GetView<SubscriptionsController> {
                               ),
                               SizedBox(height: 6.h),
                               Text(
-                                "You're one of our first 100 members.",
+                                !controller.isPromoTrial
+                                    ? 'Full access for the trial period. Cancel anytime.'
+                                    : controller.promoLimit > 0
+                                        ? "You're one of our first "
+                                            '${controller.promoLimit} members.'
+                                        : "You're part of our launch group.",
                                 style: GoogleFonts.poppins(
                                   fontSize: 12.sp,
                                   fontWeight: FontWeight.w400,
@@ -213,7 +223,7 @@ class ConformTrial extends GetView<SubscriptionsController> {
                           if (controller.isTrialEligible.value) ...[
                             _DetailRow(
                               label: 'Trial Period',
-                              value: '1 Month Free',
+                              value: controller.trialHeadlineLabel,
                               valueColor: const Color(0xFF7B1FE0),
                             ),
                             SizedBox(height: 5.h),
@@ -223,7 +233,9 @@ class ConformTrial extends GetView<SubscriptionsController> {
                             SizedBox(height: 5.h),
                             _DetailRow(
                               label: 'First Charge',
-                              value: controller.firstChargeDate,
+                              value: controller.firstChargeDate.isEmpty
+                                  ? 'After trial ends'
+                                  : controller.firstChargeDate,
                               valueColor: Colors.white,
                             ),
                           ] else ...[
@@ -241,7 +253,7 @@ class ConformTrial extends GetView<SubscriptionsController> {
                           _DetailRow(
                             label: 'Due Today',
                             value:
-                                '\$${controller.dueToday.toStringAsFixed(2)}',
+                                '\$${(controller.isTrialEligible.value ? 0.0 : controller.dueToday).toStringAsFixed(2)}',
                             valueColor: const Color(0xFF2ECC71),
                             isBold: true,
                           ),
@@ -333,9 +345,11 @@ class ConformTrial extends GetView<SubscriptionsController> {
                       final price = controller.selectedPlan?.price
                               .toStringAsFixed(0) ??
                           '0';
+                      final chargeDate = controller.firstChargeDate;
                       final text = controller.isTrialEligible.value
                           ? 'Your subscription will automatically renew at '
-                            '\$$price/month on ${controller.firstChargeDate} '
+                            '\$$price/month '
+                            '${chargeDate.isEmpty ? 'when the free trial ends' : 'on $chargeDate'} '
                             'unless you cancel before that date. Cancel anytime in Settings.'
                           : 'By tapping "Purchase Now", you agree to be charged '
                             '\$$price/month starting today. Cancel anytime in Settings.';
@@ -366,9 +380,11 @@ class ConformTrial extends GetView<SubscriptionsController> {
                   // ── CTA button ────────────────────────────────────────
                   Obx(
                     () => CustomElevatedButton(
-                      text: controller.isTrialEligible.value
-                          ? 'Start Free Trial  →'
-                          : 'Purchase Now  →',
+                      text: !controller.isTrialEligible.value
+                          ? 'Purchase Now  →'
+                          : controller.trialDurationShortLabel.isEmpty
+                              ? 'Start Free Trial  →'
+                              : 'Start ${controller.trialDurationShortLabel} Free Trial  →',
                       onTap: controller.isTrialEligible.value
                           ? controller.onStartFreeTrialPressed
                           : controller.onPaidPurchasePressed,
@@ -413,20 +429,26 @@ class _DetailRow extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          label,
-          style: GoogleFonts.poppins(
-            fontSize: 13.sp,
-            fontWeight: FontWeight.w400,
-            color: Colors.white54,
+        Expanded(
+          child: Text(
+            label,
+            style: GoogleFonts.poppins(
+              fontSize: 13.sp,
+              fontWeight: FontWeight.w400,
+              color: Colors.white54,
+            ),
           ),
         ),
-        Text(
-          value,
-          style: GoogleFonts.poppins(
-            fontSize: 14.sp,
-            fontWeight: isBold ? FontWeight.w700 : FontWeight.w600,
-            color: valueColor,
+        SizedBox(width: 10.w),
+        Flexible(
+          child: Text(
+            value,
+            textAlign: TextAlign.right,
+            style: GoogleFonts.poppins(
+              fontSize: 14.sp,
+              fontWeight: isBold ? FontWeight.w700 : FontWeight.w600,
+              color: valueColor,
+            ),
           ),
         ),
       ],

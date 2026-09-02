@@ -1,4 +1,5 @@
 import 'package:get/get.dart';
+import '../di/bottom_nav_binding.dart';
 import '../../features/Post/presentation/screen/comment_screen.dart';
 import '../../features/Post/presentation/screen/post_screen.dart';
 import '../../features/authentication/presentation/screen/forgot_password_screen.dart';
@@ -135,6 +136,7 @@ abstract class AppPages {
     GetPage(
       name: AppRoutes.bottomNavScreen,
       page: () => const BottomNavScreen(),
+      binding: BottomNavBinding(),
     ),
 
 

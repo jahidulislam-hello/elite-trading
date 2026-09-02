@@ -282,17 +282,16 @@ class SignalDetailScreen extends GetView<SignalController> {
                         border: Border.all(
                             color: Colors.white.withValues(alpha: 0.06)),
                       ),
-                      child: listItem != null
-                          ? SignalCandleChart(
-                              signal: listItem, height: 300)
-                          : SizedBox(
-                              height: 300.h,
-                              child: const Center(
-                                child: CircularProgressIndicator(
-                                    color: Color(0xFF7B1FE0),
-                                    strokeWidth: 2),
-                              ),
-                            ),
+                      child: Obx(() {
+                        final chart = controller.chartData.value;
+                        final loading = controller.isChartLoading.value;
+                        return SignalCandleChart(
+                          chartData: chart,
+                          signal: listItem,
+                          isLoading: loading,
+                          height: 300,
+                        );
+                      }),
                     ),
 
                     SizedBox(height: 18.h),
@@ -334,6 +333,12 @@ class SignalDetailScreen extends GetView<SignalController> {
 
                     // ── Tab content ─────────────────────────────────
                     Obx(() {
+                      // Read every observable this builder depends on up
+                      // front — Obx throws if a build path returns without
+                      // touching one (e.g. the loading branch below).
+                      final tabIndex = controller.selectedTabIndex.value;
+                      final error = controller.detailError.value;
+
                       if (isLoading && detail == null) {
                         return const Center(
                           child: Padding(
@@ -343,14 +348,13 @@ class SignalDetailScreen extends GetView<SignalController> {
                           ),
                         );
                       }
-                      if (controller.detailError.value.isNotEmpty &&
-                          detail == null) {
+                      if (error.isNotEmpty && detail == null) {
                         return Center(
                           child: Padding(
                             padding:
                                 EdgeInsets.symmetric(vertical: 30.h),
                             child: Text(
-                              controller.detailError.value,
+                              error,
                               style: GoogleFonts.poppins(
                                   fontSize: 13.sp, color: Colors.white54),
                               textAlign: TextAlign.center,
@@ -360,7 +364,7 @@ class SignalDetailScreen extends GetView<SignalController> {
                       }
                       if (detail == null) return const SizedBox.shrink();
 
-                      return controller.selectedTabIndex.value == 0
+                      return tabIndex == 0
                           ? _SummaryTab(
                               detail: detail, controller: controller)
                           : _DetailsTab(

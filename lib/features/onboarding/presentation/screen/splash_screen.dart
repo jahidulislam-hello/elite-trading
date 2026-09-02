@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:elite_trading/core/routes/app_routes.dart';
+import 'package:elite_trading/core/services/storage_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -20,8 +21,24 @@ class _SplashScreenState extends State<SplashScreen> {
 
   Future<void> _navigateToNext() async {
     await Future.delayed(const Duration(seconds: 2));
-    if (mounted) {
+    if (!mounted) return;
+
+    final storage = Get.find<StorageService>();
+    final token = storage.getString(StorageKeys.authToken);
+    final isLoggedIn = storage.getBool(StorageKeys.isLoggedIn) ?? false;
+    final isFirstLaunch = storage.getBool(StorageKeys.isFirstLaunch) ?? true;
+
+    // Returning user with a valid session → home (skip onboarding/login/subscription)
+    if (isLoggedIn && token != null && token.isNotEmpty) {
+      Get.offAllNamed(AppRoutes.bottomNavScreen);
+      return;
+    }
+
+    // First-time install → onboarding; otherwise → login
+    if (isFirstLaunch) {
       Get.offNamed(AppRoutes.onbordingOne);
+    } else {
+      Get.offAllNamed(AppRoutes.signInScreen);
     }
   }
 

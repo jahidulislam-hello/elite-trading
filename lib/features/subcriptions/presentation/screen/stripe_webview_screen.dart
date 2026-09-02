@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -41,7 +40,8 @@ class StripeWebViewScreen extends StatefulWidget {
 class _StripeWebViewScreenState extends State<StripeWebViewScreen> {
   late final WebViewController _webViewController;
   bool _isLoading = true;
-  bool _hasHandled = false; // prevent double-fire
+  bool _hasHandled = false; // prevent double-fire of the result callbacks
+  bool _isClosing = false;
 
   /// URL fragments the backend injects for success / cancel.
   /// Match both localhost and any production domain.
@@ -78,13 +78,13 @@ class _StripeWebViewScreenState extends State<StripeWebViewScreen> {
 
             if (!_hasHandled && _isSuccessUrl(url)) {
               _hasHandled = true;
-              _handleSuccess();
+              _handleResult(success: true, delayed: true);
               return NavigationDecision.prevent;
             }
 
             if (!_hasHandled && _isCancelUrl(url)) {
               _hasHandled = true;
-              _handleCancel();
+              _handleResult(success: false, delayed: true);
               return NavigationDecision.prevent;
             }
 
@@ -95,63 +95,130 @@ class _StripeWebViewScreenState extends State<StripeWebViewScreen> {
       ..loadRequest(Uri.parse(widget.checkoutUrl));
   }
 
-  void _handleSuccess() {
-    // Small delay so WebView teardown is clean
-    Future.delayed(const Duration(milliseconds: 300), () {
-      if (mounted) {
-        if (widget.onSuccess != null) {
-          widget.onSuccess!();
-        } else {
-          Get.back();
-        }
-      }
-    });
-  }
+  /// Closes this route through its own [Navigator], then reports the outcome.
+  ///
+  /// Get.back() is unsafe here: a GetX snackbar is also a route, so it would
+  /// pop the snackbar and leave the checkout on screen.
+  void _handleResult({required bool success, bool delayed = false}) {
+    if (_isClosing) return;
+    _isClosing = true;
+    _hasHandled = true;
 
-  void _handleCancel() {
-    Future.delayed(const Duration(milliseconds: 300), () {
-      if (mounted) {
-        if (widget.onCancel != null) {
-          widget.onCancel!();
-        } else {
-          Get.back();
-        }
+    void close() {
+      if (!mounted) return;
+      final navigator = Navigator.of(context);
+      if (navigator.canPop()) navigator.pop();
+
+      if (success) {
+        widget.onSuccess?.call();
+      } else {
+        widget.onCancel?.call();
       }
-    });
+    }
+
+    if (delayed) {
+      // Give the WebView a moment to settle before tearing the route down.
+      Future.delayed(const Duration(milliseconds: 300), close);
+    } else {
+      close();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0F0B1E),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF1B1830),
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.close, color: Colors.white),
-          onPressed: () {
-            if (!_hasHandled) {
-              _hasHandled = true;
-              _handleCancel();
-            }
-          },
-        ),
-        title: Text(
-          'Secure Checkout',
-          style: GoogleFonts.poppins(
-            fontSize: 16.sp,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
+    return PopScope(
+      // Route the hardware/gesture back through the same cancel path so the
+      // caller always learns the checkout was abandoned.
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _handleResult(success: false);
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFF0F0B1E),
+        body: SafeArea(
+          child: Column(
+            children: [
+              _CheckoutHeader(onClose: () => _handleResult(success: false)),
+              Expanded(
+                child: Stack(
+                  children: [
+                    WebViewWidget(controller: _webViewController),
+                    if (_isLoading)
+                      Container(
+                        color: const Color(0xFF0F0B1E),
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const CircularProgressIndicator(
+                                color: Color(0xFF7B1FE0),
+                                strokeWidth: 2.5,
+                              ),
+                              SizedBox(height: 16.h),
+                              Text(
+                                'Loading secure checkout…',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 13.sp,
+                                  color: Colors.white54,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              _CancelFooter(onCancel: () => _handleResult(success: false)),
+            ],
           ),
         ),
-        centerTitle: true,
-        actions: [
-          // SSL lock badge
+      ),
+    );
+  }
+}
+
+/// Plain Flutter header laid out above the WebView instead of an [AppBar], so
+/// the native web view can never overlap the close button's hit area.
+class _CheckoutHeader extends StatelessWidget {
+  final VoidCallback onClose;
+  const _CheckoutHeader({required this.onClose});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 58.h,
+      padding: EdgeInsets.symmetric(horizontal: 8.w),
+      color: const Color(0xFF1B1830),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: onClose,
+            behavior: HitTestBehavior.opaque,
+            child: Container(
+              width: 44.w,
+              height: 44.w,
+              alignment: Alignment.center,
+              child: Icon(Icons.close, color: Colors.white, size: 22.sp),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              'Secure Checkout',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(
+                fontSize: 16.sp,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
+            ),
+          ),
           Padding(
-            padding: EdgeInsets.only(right: 14.w),
+            padding: EdgeInsets.only(right: 10.w),
             child: Row(
               children: [
-                Icon(Icons.lock_outline, size: 13.sp, color: Colors.greenAccent),
+                Icon(Icons.lock_outline,
+                    size: 13.sp, color: Colors.greenAccent),
                 SizedBox(width: 4.w),
                 Text(
                   'Stripe',
@@ -166,33 +233,35 @@ class _StripeWebViewScreenState extends State<StripeWebViewScreen> {
           ),
         ],
       ),
-      body: Stack(
-        children: [
-          WebViewWidget(controller: _webViewController),
-          if (_isLoading)
-            Container(
-              color: const Color(0xFF0F0B1E),
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const CircularProgressIndicator(
-                      color: Color(0xFF7B1FE0),
-                      strokeWidth: 2.5,
-                    ),
-                    SizedBox(height: 16.h),
-                    Text(
-                      'Loading secure checkout…',
-                      style: GoogleFonts.poppins(
-                        fontSize: 13.sp,
-                        color: Colors.white54,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+    );
+  }
+}
+
+class _CancelFooter extends StatelessWidget {
+  final VoidCallback onCancel;
+  const _CancelFooter({required this.onCancel});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      color: const Color(0xFF1B1830),
+      padding: EdgeInsets.symmetric(vertical: 6.h),
+      child: GestureDetector(
+        onTap: onCancel,
+        behavior: HitTestBehavior.opaque,
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 10.h),
+          child: Text(
+            'Cancel and go back',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.poppins(
+              fontSize: 13.sp,
+              fontWeight: FontWeight.w500,
+              color: Colors.white54,
             ),
-        ],
+          ),
+        ),
       ),
     );
   }

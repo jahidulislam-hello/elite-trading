@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../../core/exceptions/app_exceptions.dart';
+import '../../../../core/services/storage_service.dart';
 import '../../data/model/signal_model.dart';
 import '../../signal_service.dart';
 import '../screen/all_singnal_screen.dart';
@@ -24,54 +27,62 @@ class SignalController extends GetxController {
   final RxString signalsError = ''.obs;
   final RxString accessLevel = 'full'.obs; // 'full' | 'limited' | etc.
 
-  // ─── Search & category filter ─────────────────────────────────────────────
+  // ─── Search & category filter (server-side via API) ───────────────────────
   final TextEditingController searchController = TextEditingController();
   final RxString selectedCategory = 'All'.obs;
-  final List<String> categories = const ['All', 'Forex', 'Crypto', 'Commodity', 'Index'];
+  final List<String> categories =
+      const ['All', 'Forex', 'Crypto', 'Commodity', 'Index'];
   final RxString searchQuery = ''.obs;
+  Timer? _searchDebounce;
 
-  List<SignalModel> get filteredSignals {
-    return signals.where((s) {
-      final matchesCategory = selectedCategory.value == 'All' ||
-          s.category.toLowerCase() == selectedCategory.value.toLowerCase();
-      final matchesSearch = searchQuery.value.isEmpty ||
-          s.asset.toLowerCase().contains(searchQuery.value.toLowerCase());
-      return matchesCategory && matchesSearch;
-    }).toList();
+  /// API already applies category + searchTerm — expose the list as-is.
+  List<SignalModel> get filteredSignals => signals.toList();
+
+  void selectCategory(String category) {
+    if (selectedCategory.value == category) return;
+    selectedCategory.value = category;
+    loadSignals(refresh: true);
   }
 
-  void selectCategory(String category) => selectedCategory.value = category;
-  void onSearchChanged(String value) => searchQuery.value = value;
+  void onSearchChanged(String value) {
+    searchQuery.value = value;
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 400), () {
+      loadSignals(refresh: true);
+    });
+  }
 
   int get totalSignals => signals.length;
 
   // ─── Signal detail ────────────────────────────────────────────────────────
   final Rx<SignalDetailModel?> currentSignalDetail =
       Rx<SignalDetailModel?>(null);
-  // Keep the list-item ref for quick access to basic info before detail loads
   final Rx<SignalModel?> currentSignalListItem = Rx<SignalModel?>(null);
   final RxBool isDetailLoading = false.obs;
   final RxString detailError = ''.obs;
 
   final RxBool isFavorite = false.obs;
   final RxBool alertsEnabled = false.obs;
-  final RxInt selectedTabIndex = 0.obs; // 0 = Summary, 1 = Details
+  final RxInt selectedTabIndex = 0.obs;
   final RxString selectedTimeframe = '1W'.obs;
   final List<String> timeframes = const ['1H', '24H', '3D', '1W', '1M', '6M'];
 
-  // Chart data
   final Rx<SignalChartData?> chartData = Rx<SignalChartData?>(null);
   final RxBool isChartLoading = false.obs;
 
-  // ─── Lifecycle ────────────────────────────────────────────────────────────
   @override
   void onInit() {
     super.onInit();
+    try {
+      final storage = Get.find<StorageService>();
+      final cached = storage.getString(StorageKeys.userName);
+      if (cached != null && cached.isNotEmpty) {
+        userName.value = cached;
+      }
+    } catch (_) {}
     loadMarketHours();
     loadSignals();
   }
-
-  // ─── Data loading ─────────────────────────────────────────────────────────
 
   Future<void> loadMarketHours() async {
     isMarketHoursLoading.value = true;
@@ -79,7 +90,7 @@ class SignalController extends GetxController {
       final hours = await _service.getMarketHours();
       marketHours.value = hours;
     } catch (_) {
-      // Market hours are non-critical — silently fall back to empty
+      // Market hours are non-critical
     } finally {
       isMarketHoursLoading.value = false;
     }
@@ -91,20 +102,22 @@ class SignalController extends GetxController {
     signalsError.value = '';
     try {
       final result = await _service.getSignals(
-        category: selectedCategory.value == 'All' ? null : selectedCategory.value,
+        category: selectedCategory.value,
+        searchTerm: searchQuery.value.trim().isEmpty
+            ? null
+            : searchQuery.value.trim(),
       );
       signals.value = result.signals;
       accessLevel.value = result.access;
     } on AppException catch (e) {
       signalsError.value = e.message;
-    } catch (_) {
+    } catch (e, s) {
+      debugPrint('loadSignals failed: $e\n$s');
       signalsError.value = 'Failed to load signals. Please try again.';
     } finally {
       isSignalsLoading.value = false;
     }
   }
-
-  // ─── Navigation ───────────────────────────────────────────────────────────
 
   void onSeeAllSignalsPressed() => Get.to(() => const AllSingnalScreen());
 
@@ -128,39 +141,44 @@ class SignalController extends GetxController {
       currentSignalDetail.value = detail;
       isFavorite.value = detail.header.isFavorite;
       alertsEnabled.value = detail.userActions.alertsEnabled;
-      // Load chart for the default timeframe
-      await loadChart(id, timeframe: detail.chart.defaultTimeframe);
+      final tf = detail.chart.defaultTimeframe.isNotEmpty
+          ? detail.chart.defaultTimeframe
+          : '1W';
+      selectedTimeframe.value = tf;
+      await loadChart(id, timeframe: tf);
     } on AppException catch (e) {
       detailError.value = e.message;
-    } catch (_) {
+    } catch (e, s) {
+      debugPrint('loadSignalDetail failed: $e\n$s');
       detailError.value = 'Failed to load signal details.';
     } finally {
       isDetailLoading.value = false;
     }
   }
 
-  // ─── Chart ────────────────────────────────────────────────────────────────
-
   Future<void> loadChart(String id, {String timeframe = '1W'}) async {
     isChartLoading.value = true;
     try {
       final data = await _service.getSignalChart(id, timeframe: timeframe);
       chartData.value = data;
-    } catch (_) {
-      // Chart is non-critical
+      selectedTimeframe.value =
+          data.timeframe.isNotEmpty ? data.timeframe : timeframe;
+    } catch (e, s) {
+      debugPrint('loadChart failed: $e\n$s');
     } finally {
       isChartLoading.value = false;
     }
   }
 
   void selectTimeframe(String tf) {
+    if (selectedTimeframe.value == tf && chartData.value != null) {
+      if (chartData.value!.candles.isNotEmpty) return;
+    }
     selectedTimeframe.value = tf;
     final id = currentSignalListItem.value?.id ??
         currentSignalDetail.value?.header.id;
     if (id != null) loadChart(id, timeframe: tf);
   }
-
-  // ─── User actions ─────────────────────────────────────────────────────────
 
   void selectDetailTab(int index) => selectedTabIndex.value = index;
 
@@ -169,11 +187,11 @@ class SignalController extends GetxController {
         currentSignalDetail.value?.header.id;
     if (id == null) return;
     final newValue = !isFavorite.value;
-    isFavorite.value = newValue; // optimistic
+    isFavorite.value = newValue;
     try {
       await _service.setFavorite(id, enabled: newValue);
     } catch (_) {
-      isFavorite.value = !newValue; // revert on error
+      isFavorite.value = !newValue;
       _showError('Failed to update favorite.');
     }
   }
@@ -188,21 +206,20 @@ class SignalController extends GetxController {
       return;
     }
     final newValue = !alertsEnabled.value;
-    alertsEnabled.value = newValue; // optimistic
+    alertsEnabled.value = newValue;
     try {
       await _service.setAlerts(id, enabled: newValue);
       final asset = currentSignalListItem.value?.asset ??
-          currentSignalDetail.value?.header.asset ?? '';
+          currentSignalDetail.value?.header.asset ??
+          '';
       _showSuccess(newValue
           ? 'Alerts enabled for $asset.'
           : 'Alerts disabled for $asset.');
     } catch (_) {
-      alertsEnabled.value = !newValue; // revert
+      alertsEnabled.value = !newValue;
       _showError('Failed to update alerts.');
     }
   }
-
-  // ─── Snackbar helpers ─────────────────────────────────────────────────────
 
   void _showError(String msg) {
     if (Get.isSnackbarOpen) Get.closeAllSnackbars();
@@ -234,10 +251,9 @@ class SignalController extends GetxController {
     );
   }
 
-  // ─── Dispose ──────────────────────────────────────────────────────────────
-
   @override
   void onClose() {
+    _searchDebounce?.cancel();
     searchController.dispose();
     super.onClose();
   }

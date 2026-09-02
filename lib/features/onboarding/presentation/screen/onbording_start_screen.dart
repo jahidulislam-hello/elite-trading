@@ -1,4 +1,5 @@
 import 'package:elite_trading/core/routes/app_routes.dart';
+import 'package:elite_trading/core/services/storage_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -62,7 +63,9 @@ class OnbordingStartScreen extends StatelessWidget {
                     width: double.infinity,
                     height: 45.h,
                     child: ElevatedButton(
-                      onPressed: (){
+                      onPressed: () async {
+                        final storage = Get.find<StorageService>();
+                        await storage.setBool(StorageKeys.isFirstLaunch, false);
                         Get.offAllNamed(AppRoutes.signInScreen);
                       },
                       style: ElevatedButton.styleFrom(

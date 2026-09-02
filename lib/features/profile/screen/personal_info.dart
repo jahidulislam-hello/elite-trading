@@ -59,9 +59,11 @@ class PersonalInfo extends GetView<ProfileController> {
 
                     // -------- Avatar with camera + add badge --------
                     Center(
-                      child: ProfileAvatarWidget(
-                        networkImageUrl: controller.networkAvatarUrl,
-                        onImagePicked: controller.onAvatarSelected,
+                      child: Obx(
+                        () => ProfileAvatarWidget(
+                          networkImageUrl: controller.networkAvatarUrl.value,
+                          onImagePicked: controller.onAvatarSelected,
+                        ),
                       ),
                     ),
 

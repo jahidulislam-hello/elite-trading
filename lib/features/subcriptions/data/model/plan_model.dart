@@ -18,14 +18,23 @@ class PlanModel {
   });
 }
 
-class ComparisonRow {
-  final String label;
-  final List<bool> checks; // [Crypto, Forex, VIP]
+/// One cell of the plan comparison table.
+///
+/// [text] is used for values that aren't a yes/no (signals per day, support
+/// tier); otherwise the cell renders a tick or a cross based on [included].
+class PlanComparisonCell {
+  final bool included;
+  final String? text;
 
-  ComparisonRow(this.label, this.checks);
+  const PlanComparisonCell({required this.included, this.text});
 }
 
-enum PaymentMethod { card, applePay, googlePay }
+class PlanComparisonRow {
+  final String label;
+  final List<PlanComparisonCell> cells;
+
+  const PlanComparisonRow(this.label, this.cells);
+}
 
 class TrialFeature {
   final String label;

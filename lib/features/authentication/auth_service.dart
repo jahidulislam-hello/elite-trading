@@ -179,7 +179,38 @@ class AuthService {
   }
 
   // ──────────────────────────────────────────────────────────────────────────
-  // 9. CHANGE PASSWORD  (requires auth token)
+  // 9. UPDATE PROFILE  (requires auth token)
+  // PATCH /api/v1/user/update-profile
+  // Body: { name?, firstName?, lastName?, phone?, address? }
+  // ──────────────────────────────────────────────────────────────────────────
+  Future<UserModel> updateProfile({
+    String? name,
+    String? firstName,
+    String? lastName,
+    String? phone,
+    String? address,
+  }) async {
+    final body = <String, dynamic>{
+      if (name != null) 'name': name,
+      if (firstName != null) 'firstName': firstName,
+      if (lastName != null) 'lastName': lastName,
+      if (phone != null) 'phone': phone,
+      if (address != null) 'address': address,
+    };
+    final response = await _api.patch(
+      ApiEndpoints.updateProfile,
+      data: body,
+    );
+    _assertSuccess(response.data, 'Failed to update profile.');
+    final userMap = response.data['data'] as Map<String, dynamic>?;
+    if (userMap == null) {
+      throw ServerException('Invalid update-profile response.', null);
+    }
+    return UserModel.fromJson(userMap);
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // 10. CHANGE PASSWORD  (requires auth token)
   // POST /api/v1/user/change-password
   // Body: { oldPassword, newPassword, confirmPassword }
   // ──────────────────────────────────────────────────────────────────────────

@@ -4,8 +4,8 @@ import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../authentication/presentation/widget/Elevatedbutton.dart';
 import '../controller/subscriptions_controller.dart';
-import '../../data/model/subscription_models.dart';
 import '../../data/model/plan_model.dart';
+import '../../data/model/subscription_models.dart';
 import '../widget/progress_step_header.dart';
 
 class ChoosePlanScreen extends GetView<SubscriptionsController> {
@@ -44,7 +44,9 @@ class ChoosePlanScreen extends GetView<SubscriptionsController> {
                   SizedBox(height: 8.h),
                   Obx(() => Text(
                     controller.isTrialEligible.value
-                        ? 'Start with a free trial. Cancel anytime.'
+                        ? (controller.trialDurationShortLabel.isEmpty
+                            ? 'Start with a free trial. Cancel anytime.'
+                            : 'Start with ${controller.trialDurationShortLabel} free. Cancel anytime.')
                         : 'Choose the plan that fits you best.',
                     style: GoogleFonts.poppins(
                       fontSize: 13.sp,
@@ -376,76 +378,110 @@ class _ComparisonTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.all(16.w),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1B1830),
-        borderRadius: BorderRadius.circular(14.r),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                flex: 2,
-                child: Text('FEATURES',
-                    style: GoogleFonts.poppins(
-                        fontSize: 10.sp,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white38,
-                        letterSpacing: 0.5)),
-              ),
-              ...['Crypto', 'Forex', 'VIP'].asMap().entries.map(
-                    (e) => Expanded(
-                      child: Center(
-                        child: Text(
-                          e.value,
-                          style: GoogleFonts.poppins(
-                            fontSize: 10.sp,
-                            fontWeight: FontWeight.w600,
-                            color: e.key == 2
-                                ? const Color(0xFFE0A11F)
-                                : Colors.white38,
+    return Obx(() {
+      final plans = controller.plans.toList();
+      final rows = controller.comparisonRows;
+      if (plans.isEmpty || rows.isEmpty) return const SizedBox.shrink();
+
+      final highlightIndex = plans.indexWhere((p) => p.isPopular);
+
+      return Container(
+        padding: EdgeInsets.all(16.w),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1B1830),
+          borderRadius: BorderRadius.circular(14.r),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+        ),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: Text('FEATURES',
+                      style: GoogleFonts.poppins(
+                          fontSize: 10.sp,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white38,
+                          letterSpacing: 0.5)),
+                ),
+                ...plans.asMap().entries.map(
+                      (e) => Expanded(
+                        child: Center(
+                          child: Text(
+                            e.value.name,
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.poppins(
+                              fontSize: 10.sp,
+                              fontWeight: FontWeight.w600,
+                              color: e.key == highlightIndex
+                                  ? const Color(0xFFE0A11F)
+                                  : Colors.white38,
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-            ],
-          ),
-          SizedBox(height: 12.h),
-          ...controller.comparisonRows.map(
-            (row) => Padding(
-              padding: EdgeInsets.only(bottom: 12.h),
-              child: Row(
-                children: [
-                  Expanded(
-                    flex: 2,
-                    child: Text(row.label,
-                        style: GoogleFonts.poppins(
-                            fontSize: 12.sp, color: Colors.white70)),
-                  ),
-                  ...row.checks.asMap().entries.map(
-                        (e) => Expanded(
-                          child: Center(
-                            child: e.value
-                                ? Icon(Icons.check_circle_outline,
-                                    size: 15.sp,
-                                    color: e.key == 2
-                                        ? const Color(0xFFE0A11F)
-                                        : const Color(0xFF2ECC71))
-                                : Icon(Icons.close,
-                                    size: 15.sp, color: Colors.white24),
+              ],
+            ),
+            SizedBox(height: 12.h),
+            ...rows.map(
+              (row) => Padding(
+                padding: EdgeInsets.only(bottom: 12.h),
+                child: Row(
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: Text(row.label,
+                          style: GoogleFonts.poppins(
+                              fontSize: 12.sp, color: Colors.white70)),
+                    ),
+                    ...row.cells.asMap().entries.map(
+                          (e) => Expanded(
+                            child: Center(
+                              child: _ComparisonCell(
+                                cell: e.value,
+                                isHighlighted: e.key == highlightIndex,
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
-      ),
-    );
+          ],
+        ),
+      );
+    });
+  }
+}
+
+class _ComparisonCell extends StatelessWidget {
+  final PlanComparisonCell cell;
+  final bool isHighlighted;
+
+  const _ComparisonCell({required this.cell, required this.isHighlighted});
+
+  @override
+  Widget build(BuildContext context) {
+    final activeColor =
+        isHighlighted ? const Color(0xFFE0A11F) : const Color(0xFF2ECC71);
+
+    if (cell.text != null) {
+      return Text(
+        cell.text!,
+        textAlign: TextAlign.center,
+        style: GoogleFonts.poppins(
+          fontSize: 11.sp,
+          fontWeight: FontWeight.w600,
+          color: cell.included ? activeColor : Colors.white24,
+        ),
+      );
+    }
+
+    return cell.included
+        ? Icon(Icons.check_circle_outline, size: 15.sp, color: activeColor)
+        : Icon(Icons.close, size: 15.sp, color: Colors.white24);
   }
 }

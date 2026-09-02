@@ -1,122 +1,132 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-import '../../data/model/history_signal_model.dart';
+import '../../../../core/exceptions/app_exceptions.dart';
+import '../../../signals/data/model/signal_model.dart';
+import '../../../signals/signal_service.dart';
 
 class HistoryContainer extends GetxController {
-  final String userAvatar = 'asset/image/profile/alex.png';
+  // ─── Service ──────────────────────────────────────────────────────────────
+  final SignalService _service = SignalService();
 
-  //---------------- Performance overview ----------------
-  final RxInt wins = 4.obs;
-  final RxInt losses = 2.obs;
-  final RxInt breakeven = 1.obs;
+  // ─── Performance overview (from API) ─────────────────────────────────────
+  final RxInt wins = 0.obs;
+  final RxInt losses = 0.obs;
+  final RxInt breakeven = 0.obs;
+  final RxInt totalClosed = 0.obs;
+
   double get winRate {
     final total = wins.value + losses.value + breakeven.value;
-    if (total == 0) return 0;
+    if (total == 0) return 0.0;
     return (wins.value / total) * 100;
   }
 
-  //---------------- Signals ----------------
-  final RxList<HistorySignalModel> signals = <HistorySignalModel>[].obs;
-  int get totalClosed => signals.length;
+  // ─── History signals ──────────────────────────────────────────────────────
+  final RxList<SignalHistoryModel> signals = <SignalHistoryModel>[].obs;
+  final RxBool isLoading = false.obs;
+  final RxString error = ''.obs;
+  final RxString accessLevel = 'full'.obs;
 
-  //---------------- Search + filter ----------------
+  // ─── Search + filter ──────────────────────────────────────────────────────
+  final TextEditingController searchController = TextEditingController();
   final RxString searchQuery = ''.obs;
   final RxString selectedFilter = 'All'.obs;
-  final List<String> filters = const ['All', 'Win', 'Loss', 'BreakEvent'];
+  final List<String> filters = const ['All', 'Win', 'Loss', 'Breakeven'];
   final RxBool isFilterPanelOpen = false.obs;
+  Timer? _searchDebounce;
 
-  List<HistorySignalModel> get filteredSignals {
-    return signals.where((s) {
-      final matchesSearch = searchQuery.value.isEmpty ||
-          s.pair.toLowerCase().contains(searchQuery.value.toLowerCase());
+  /// The API already applies the result filter and search term.
+  List<SignalHistoryModel> get filteredSignals => signals.toList();
 
-      bool matchesFilter;
-      switch (selectedFilter.value) {
-        case 'Win':
-          matchesFilter = s.result == HistoryResult.win;
-          break;
-        case 'Loss':
-          matchesFilter = s.result == HistoryResult.loss;
-          break;
-        case 'Crypto':
-          matchesFilter = s.categoryLabel.toLowerCase() == 'crypto';
-          break;
-        default:
-          matchesFilter = true;
-      }
-      return matchesSearch && matchesFilter;
-    }).toList();
+  void onSearchChanged(String value) {
+    searchQuery.value = value;
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 400), () {
+      loadHistory(refresh: true);
+    });
   }
 
-  void onSearchChanged(String value) => searchQuery.value = value;
   void selectFilter(String filter) {
-    selectedFilter.value = filter;
     isFilterPanelOpen.value = false;
+    if (selectedFilter.value == filter) return;
+    selectedFilter.value = filter;
+    loadHistory(refresh: true);
   }
 
-  void toggleFilterPanel() => isFilterPanelOpen.value = !isFilterPanelOpen.value;
+  void toggleFilterPanel() =>
+      isFilterPanelOpen.value = !isFilterPanelOpen.value;
   void closeFilterPanel() => isFilterPanelOpen.value = false;
 
+  // ─── Lifecycle ────────────────────────────────────────────────────────────
   @override
   void onInit() {
     super.onInit();
-    _loadDummyHistory();
+    loadHistory();
   }
 
-  void _loadDummyHistory() {
-    signals.assignAll([
-      const HistorySignalModel(
-        id: '1',
-        pair: 'NAS100',
-        categoryLabel: 'Index',
-        side: HistorySide.buy,
-        result: HistoryResult.win,
-        profitPercent: 2.02,
-        entryPrice: 19849.00,
-        exitPrice: 20248.00,
-        riskReward: '1:1.4',
-        duration: '2 days',
-        closedDate: 'Closed Jul 18, 2026',
-      ),
-      const HistorySignalModel(
-        id: '2',
-        pair: 'USD/CAD',
-        categoryLabel: 'Forex',
-        side: HistorySide.sell,
-        result: HistoryResult.win,
-        profitPercent: 0.45,
-        entryPrice: 1.36230,
-        exitPrice: 1.36280,
-        riskReward: '1:1.4',
-        duration: '18h',
-        closedDate: 'Closed Jul 17, 2026',
-      ),
-      const HistorySignalModel(
-        id: '3',
-        pair: 'ETH/USDT',
-        categoryLabel: 'Crypto',
-        side: HistorySide.buy,
-        result: HistoryResult.loss,
-        profitPercent: -1.22,
-        entryPrice: 3280.00,
-        exitPrice: 3240.00,
-        riskReward: '1:1.4',
-        duration: '5h',
-        closedDate: 'Closed Jul 16, 2026',
-      ),
-      const HistorySignalModel(
-        id: '4',
-        pair: 'GBP/JPY',
-        categoryLabel: 'Forex',
-        side: HistorySide.buy,
-        result: HistoryResult.breakeven,
-        profitPercent: 0.0,
-        entryPrice: 198.50,
-        exitPrice: 198.50,
-        riskReward: '1:2.0',
-        duration: '1 day',
-        closedDate: 'Closed Jul 15, 2026',
-      ),
-    ]);
+  // ─── Data loading ─────────────────────────────────────────────────────────
+  Future<void> loadHistory({bool refresh = false}) async {
+    if (refresh) signals.clear();
+    isLoading.value = true;
+    error.value = '';
+    try {
+      final result = await _service.getSignalHistory(
+        result: selectedFilter.value,
+        searchTerm: searchQuery.value.trim().isEmpty
+            ? null
+            : searchQuery.value.trim(),
+      );
+      signals.value = result.signals;
+      totalClosed.value = result.totalClosedSignals;
+      accessLevel.value = result.access;
+
+      // Apply performance overview from backend
+      final overview = result.performanceOverview;
+      if (overview != null) {
+        wins.value = (overview['wins'] as num?)?.toInt() ?? 0;
+        losses.value = (overview['losses'] as num?)?.toInt() ?? 0;
+        breakeven.value = (overview['breakeven'] as num?)?.toInt() ?? 0;
+      } else {
+        // Compute locally as fallback
+        wins.value = signals.where((s) => s.isWin).length;
+        losses.value = signals.where((s) => s.isLoss).length;
+        breakeven.value = signals.where((s) => s.isBreakeven).length;
+      }
+    } on AppException catch (e) {
+      error.value = e.message;
+      _showError(e.message);
+    } catch (e, s) {
+      debugPrint('loadHistory failed: $e\n$s');
+      error.value = 'Failed to load history. Please try again.';
+      _showError(error.value);
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // ─── Snackbar helper ──────────────────────────────────────────────────────
+  void _showError(String msg) {
+    if (Get.isSnackbarOpen) Get.closeAllSnackbars();
+    Get.snackbar(
+      'Error',
+      msg,
+      backgroundColor: const Color(0xFF3A1010),
+      colorText: Colors.white,
+      snackPosition: SnackPosition.TOP,
+      margin: const EdgeInsets.all(16),
+      borderRadius: 12,
+      duration: const Duration(seconds: 4),
+      icon: const Icon(Icons.error_outline, color: Colors.redAccent),
+    );
+  }
+
+  // ─── Dispose ─────────────────────────────────────────────────────────────
+  @override
+  void onClose() {
+    _searchDebounce?.cancel();
+    searchController.dispose();
+    super.onClose();
   }
 }

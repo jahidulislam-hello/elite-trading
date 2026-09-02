@@ -9,6 +9,9 @@ class ProfilePage extends GetView<ProfileController> {
 
   @override
   Widget build(BuildContext context) {
+    // Refresh profile whenever this screen is opened
+    Future.microtask(() => controller.loadProfile(silent: true));
+
     return Scaffold(
       backgroundColor: const Color(0xFF0F0B1E),
       body: Stack(
@@ -84,32 +87,38 @@ class ProfilePage extends GetView<ProfileController> {
                       ),
                       Spacer(),
                       Obx(
-                            () => controller.isPremiumMember.value
+                        () => controller.isPremiumMember.value
                             ? Container(
-                          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-                          decoration: BoxDecoration(
-                            color: Color(0xFFBFA06D).withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(20.r),
-                            border: Border.all(
-                              width: 0.5,color: Color(0xFFBFA06D).withValues(alpha: 0.3),
-                            )
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.auto_awesome, size: 12.sp, color: const Color(0xFFE0A11F)),
-                              SizedBox(width: 4.w),
-                              Text(
-                                'PREMIUM MEMBER',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 9.sp,
-                                  fontWeight: FontWeight.w700,
-                                  color:const Color(0xFFE0A11F),
-                                  letterSpacing: 0.5,
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 12.w, vertical: 8.h),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFBFA06D)
+                                      .withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(20.r),
+                                  border: Border.all(
+                                    width: 0.5,
+                                    color: const Color(0xFFBFA06D)
+                                        .withValues(alpha: 0.3),
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        )
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.auto_awesome,
+                                        size: 12.sp,
+                                        color: const Color(0xFFE0A11F)),
+                                    SizedBox(width: 4.w),
+                                    Text(
+                                      controller.memberBadgeLabel.value,
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 9.sp,
+                                        fontWeight: FontWeight.w700,
+                                        color: const Color(0xFFE0A11F),
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
                             : const SizedBox.shrink(),
                       ),
                     ],
@@ -125,106 +134,119 @@ class ProfilePage extends GetView<ProfileController> {
                           padding: EdgeInsets.all(3.w),
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 2),
+                            border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.2),
+                                width: 2),
                           ),
-                          child: ClipOval(
-                            child: Image.network(
-                              "https://media.sproutsocial.com/uploads/2022/06/profile-picture.jpeg",
-                              width: 90.w,
-                              height: 90.w,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
-                                width: 90.w,
-                                height: 90.w,
-                                color: const Color(0xFF7B1FE0),
-                              ),
-                            ),
-                          ),
+                          child: Obx(() {
+                            final url = controller.networkAvatarUrl.value;
+                            return ClipOval(
+                              child: url.isNotEmpty
+                                  ? Image.network(
+                                      url,
+                                      width: 90.w,
+                                      height: 90.w,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) =>
+                                          _AvatarFallback(size: 90.w),
+                                    )
+                                  : _AvatarFallback(size: 90.w),
+                            );
+                          }),
                         ),
-                        // Positioned(
-                        //   bottom: 0,
-                        //   right: 0,
-                        //   child: GestureDetector(
-                        //     onTap: controller.onEditAvatarPressed,
-                        //     child: Container(
-                        //       padding: EdgeInsets.all(6.w),
-                        //       decoration: BoxDecoration(
-                        //         color: const Color(0xFF2ECC71),
-                        //         shape: BoxShape.circle,
-                        //         border: Border.all(color: const Color(0xFF0F0B1E), width: 2),
-                        //       ),
-                        //       child: Icon(Icons.edit, size: 12.sp, color: Colors.white),
-                        //     ),
-                        //   ),
-                        // ),
                       ],
                     ),
                   ),
 
                   SizedBox(height: 14.h),
 
-                  Center(
-                    child: Text(
-                      controller.userName,
-                      style: GoogleFonts.poppins(
-                        fontSize: 18.sp,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
+                  Obx(() => Center(
+                        child: Text(
+                          controller.userName.value,
+                          style: GoogleFonts.poppins(
+                            fontSize: 18.sp,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                      )),
                   SizedBox(height: 4.h),
-                  Center(
-                    child: Text(
-                      controller.userEmail,
-                      style: GoogleFonts.poppins(
-                        fontSize: 12.sp,
-                        fontWeight: FontWeight.w400,
-                        color: Colors.white54,
-                      ),
-                    ),
-                  ),
+                  Obx(() => Center(
+                        child: Text(
+                          controller.userEmail.value,
+                          style: GoogleFonts.poppins(
+                            fontSize: 12.sp,
+                            fontWeight: FontWeight.w400,
+                            color: Colors.white54,
+                          ),
+                        ),
+                      )),
 
                   SizedBox(height: 22.h),
 
                   // -------- Premium plan card --------
-                  Container(
-                    padding: EdgeInsets.all(16.w),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.4),
-                      borderRadius: BorderRadius.circular(18.r),
-                      border: Border.all(color: const Color(0xFF64D77A).withValues(alpha: 0.4)),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              controller.planLabel,
-                              style: GoogleFonts.poppins(
-                                fontSize: 10.sp,
-                                fontWeight: FontWeight.w700,
-                                color: const Color(0xFFE0A11F),
-                                letterSpacing: 1,
-                              ),
+                  Obx(() => GestureDetector(
+                        onTap: controller.onPlanCardPressed,
+                        behavior: HitTestBehavior.opaque,
+                        child: Container(
+                          padding: EdgeInsets.all(16.w),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.4),
+                            borderRadius: BorderRadius.circular(18.r),
+                            border: Border.all(
+                              color: controller.isPremiumMember.value
+                                  ? const Color(0xFF64D77A)
+                                      .withValues(alpha: 0.4)
+                                  : Colors.white.withValues(alpha: 0.12),
                             ),
-                            SizedBox(height: 6.h),
-                            Text(
-                              controller.planStatus,
-                              style: GoogleFonts.poppins(
-                                fontSize: 13.sp,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.white,
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    controller.planLabel.value,
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 10.sp,
+                                      fontWeight: FontWeight.w700,
+                                      color: const Color(0xFFE0A11F),
+                                      letterSpacing: 1,
+                                    ),
+                                  ),
+                                  SizedBox(height: 6.h),
+                                  Text(
+                                    controller.planStatus.value,
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 13.sp,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
-                          ],
+                              Row(
+                                children: [
+                                  Icon(
+                                    controller.isPremiumMember.value
+                                        ? Icons.military_tech
+                                        : Icons.lock_outline,
+                                    color: const Color(0xFFE0A11F),
+                                    size: 28.sp,
+                                  ),
+                                  SizedBox(width: 4.w),
+                                  Icon(
+                                    Icons.chevron_right,
+                                    color: Colors.white38,
+                                    size: 20.sp,
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
-                        Icon(Icons.military_tech, color: const Color(0xFFE0A11F), size: 28.sp),
-                      ],
-                    ),
-                  ),
+                      )),
 
                   SizedBox(height: 22.h),
 
@@ -271,6 +293,14 @@ class ProfilePage extends GetView<ProfileController> {
                           subtitle: 'Legal & subscription terms',
                           onTap: controller.onTermsConditionsPressed,
                         ),
+                        Divider(color: Colors.white24, height: 0.5, thickness: 0.5),
+                        _MenuTile(
+                          icon: Icons.star_border,
+                          title: 'Privacy & Policy',
+                          subtitle: 'Privacy policy ',
+                          onTap: controller.onPrivacyPolicyPressed,
+                        ),
+
                         Divider(color: Colors.white24, height: 0.5, thickness: 0.5),
                         _MenuTile(
                           icon: Icons.show_chart,
@@ -341,7 +371,7 @@ class _MenuTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      behavior: HitTestBehavior.opaque, // <-- এই লাইনটা যোগ করো
+      behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: Padding(
         padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 14.h),
@@ -384,6 +414,22 @@ class _MenuTile extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _AvatarFallback extends StatelessWidget {
+  final double size;
+  const _AvatarFallback({required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      color: const Color(0xFF7B1FE0),
+      alignment: Alignment.center,
+      child: Icon(Icons.person, color: Colors.white70, size: size * 0.45),
     );
   }
 }

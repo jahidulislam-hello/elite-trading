@@ -111,15 +111,23 @@ class SubscripFirstPage extends GetView<SubscriptionsController> {
 
                   // Footer text
                   Center(
-                    child: Text(
-                      'No commitment · Cancel anytime · Free trial available',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.poppins(
-                        fontSize: 11.sp,
-                        fontWeight: FontWeight.w400,
-                        color: Colors.white38,
-                      ),
-                    ),
+                    child: Obx(() {
+                      final label = controller.trialDurationShortLabel;
+                      final trialPart = !controller.isTrialEligible.value
+                          ? ''
+                          : label.isEmpty
+                              ? ' · Free trial available'
+                              : ' · $label free trial';
+                      return Text(
+                        'No commitment · Cancel anytime$trialPart',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.poppins(
+                          fontSize: 11.sp,
+                          fontWeight: FontWeight.w400,
+                          color: Colors.white38,
+                        ),
+                      );
+                    }),
                   ),
 
                   SizedBox(height: 24.h),

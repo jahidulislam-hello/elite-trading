@@ -210,12 +210,29 @@ class TrialStatusModel {
   final bool canStartFreeTrial;
   final String? reason;
 
+  /// Welcome-offer details resolved by the backend for this account:
+  /// the promo window covers verified users up to [promoLimit].
+  final int verificationOrder;
+  final int promoLimit;
+  final int promoClaimedCount;
+  final bool isPromoEligible;
+  final String? accessType; // 'promo' | 'trial'
+  final int trialDays;
+  final String? trialDurationLabel;
+
   const TrialStatusModel({
     required this.hasUsedFreeTrial,
     this.isTrialActive,
     this.trialEndDate,
     required this.canStartFreeTrial,
     this.reason,
+    this.verificationOrder = 0,
+    this.promoLimit = 0,
+    this.promoClaimedCount = 0,
+    this.isPromoEligible = false,
+    this.accessType,
+    this.trialDays = 0,
+    this.trialDurationLabel,
   });
 
   factory TrialStatusModel.fromJson(Map<String, dynamic> json) {
@@ -226,22 +243,147 @@ class TrialStatusModel {
           DateTime.tryParse(json['trialEndDate']?.toString() ?? ''),
       canStartFreeTrial: json['canStartFreeTrial'] as bool? ?? true,
       reason: json['reason'] as String?,
+      verificationOrder: (json['verificationOrder'] as num?)?.toInt() ?? 0,
+      promoLimit: (json['promoLimit'] as num?)?.toInt() ?? 0,
+      promoClaimedCount: (json['promoClaimedCount'] as num?)?.toInt() ?? 0,
+      isPromoEligible: json['isPromoEligible'] as bool? ?? false,
+      accessType: json['accessType'] as String?,
+      trialDays: (json['trialDays'] as num?)?.toInt() ?? 0,
+      trialDurationLabel: json['trialDurationLabel'] as String?,
     );
   }
 }
 
-// ─── Coupon validation result (from initiate API) ─────────────────────────
+// ─── Trial / Promo config ─────────────────────────────────────────────────
 
-class CouponResult {
-  final bool applied;
-  final String code;
-  final double discountAmount;
-  final String discountDisplay;
+/// GET /api/v1/subscription/trial-config
+///
+/// Backend source: backend/src/utils/welcomeTrial.ts — the first [promoLimit]
+/// verified users get [promoDuration]; everyone after that gets
+/// [trialDuration], and no trial at all when [trialOn] is false.
+class TrialConfigModel {
+  final bool promoOn;
+  final int promoLimit;
+  final String promoDuration;
+  final bool trialOn;
+  final String trialDuration;
+  final int verifiedUserCount;
+  final int claimedCount;
 
-  const CouponResult({
-    required this.applied,
-    required this.code,
-    required this.discountAmount,
-    required this.discountDisplay,
+  const TrialConfigModel({
+    required this.promoOn,
+    required this.promoLimit,
+    required this.promoDuration,
+    required this.trialOn,
+    required this.trialDuration,
+    required this.verifiedUserCount,
+    required this.claimedCount,
   });
+
+  factory TrialConfigModel.fromJson(Map<String, dynamic> json) {
+    return TrialConfigModel(
+      promoOn: json['promoOn'] as bool? ?? false,
+      promoLimit: (json['promoLimit'] as num?)?.toInt() ?? 0,
+      promoDuration: json['promoDuration']?.toString().trim() ?? '',
+      trialOn: json['trialOn'] as bool? ?? false,
+      trialDuration: json['trialDuration']?.toString().trim() ?? '',
+      verifiedUserCount: (json['verifiedUserCount'] as num?)?.toInt() ?? 0,
+      claimedCount: (json['claimedCount'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  /// Mirrors parseTrialDurationDays on the backend, except that an
+  /// unreadable/empty label yields 0 so the UI can stay quiet about the length
+  /// instead of inventing one. Prefers an explicit day count when the label
+  /// carries both, e.g. '1 Month (30 Days)'.
+  static int parseDurationDays(String duration) {
+    final lower = duration.toLowerCase();
+    final days = RegExp(r'(\d+)\s*day').firstMatch(lower);
+    if (days != null) {
+      final parsed = int.tryParse(days.group(1)!);
+      if (parsed != null && parsed > 0) return parsed;
+    }
+    final months = RegExp(r'(\d+)\s*month').firstMatch(lower);
+    if (months != null) {
+      final parsed = int.tryParse(months.group(1)!);
+      if (parsed != null && parsed > 0) return parsed * 30;
+    }
+    return 0;
+  }
+
+  int get promoDays => parseDurationDays(promoDuration);
+  int get trialDays => parseDurationDays(trialDuration);
+
+  int get promoSeatsLeft => promoOn && promoLimit > 0
+      ? (promoLimit - claimedCount).clamp(0, promoLimit)
+      : 0;
+
+  bool get isPromoStillOpen => promoOn && promoSeatsLeft > 0;
+}
+
+// ─── Coupon ───────────────────────────────────────────────────────────────
+
+/// Mirrors the coupon document returned by POST /api/v1/coupon/validate.
+///
+/// Backend source: backend/src/modules/basic_modules/coupon/coupon.interface.ts
+class CouponModel {
+  final String id;
+  final String code;
+  final double discount;
+  final String discountType; // 'percentage' | 'fixed'
+  final String status;
+  final int limit;
+  final int used;
+  final DateTime? expiryDate;
+  final List<String> applicablePlans;
+
+  const CouponModel({
+    required this.id,
+    required this.code,
+    required this.discount,
+    required this.discountType,
+    required this.status,
+    required this.limit,
+    required this.used,
+    this.expiryDate,
+    required this.applicablePlans,
+  });
+
+  factory CouponModel.fromJson(Map<String, dynamic> json) {
+    final rawDiscount = json['discount'];
+    return CouponModel(
+      id: json['_id']?.toString() ?? '',
+      code: json['code'] as String? ?? '',
+      discount: rawDiscount is num
+          ? rawDiscount.toDouble()
+          : double.tryParse(rawDiscount?.toString() ?? '') ?? 0.0,
+      discountType: json['discountType'] as String? ?? 'percentage',
+      status: json['status'] as String? ?? 'Active',
+      limit: (json['limit'] as num?)?.toInt() ?? 0,
+      used: (json['used'] as num?)?.toInt() ?? 0,
+      expiryDate: DateTime.tryParse(json['expiryDate']?.toString() ?? ''),
+      applicablePlans:
+          (json['applicablePlans'] as List? ?? []).map((e) => '$e').toList(),
+    );
+  }
+
+  bool get isPercentage => discountType != 'fixed';
+
+  /// Coupons with an empty [applicablePlans] list apply to every plan, which
+  /// matches the check performed by initiateSubscriptionPurchase.
+  bool appliesToPlan(String planName) =>
+      applicablePlans.isEmpty || applicablePlans.contains(planName);
+
+  /// Same maths as calculateDiscountedAmount on the backend.
+  double discountedPrice(double price) {
+    if (isPercentage) {
+      return (price * (1 - discount / 100)).clamp(0.0, price);
+    }
+    return (price - discount).clamp(0.0, price);
+  }
+
+  double discountAmount(double price) => price - discountedPrice(price);
+
+  String get discountLabel =>
+      isPercentage ? '${discount.toStringAsFixed(0)}% off' : '\$${discount.toStringAsFixed(2)} off';
 }

@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/routes/app_routes.dart';
+import '../../../profile/widget/app_profile_avatar.dart';
 import '../../data/model/post_model.dart';
 import '../controller/post_controller.dart';
 
@@ -66,19 +67,7 @@ class PostScreen extends GetView<PostController> {
                         SizedBox(width: 12.w),
                         GestureDetector(
                           onTap: () => Get.toNamed(AppRoutes.profilePage),
-                          child: ClipOval(
-                            child: Image.network(
-                              "https://media.sproutsocial.com/uploads/2022/06/profile-picture.jpeg",
-                              width: 38.w,
-                              height: 38.w,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
-                                width: 38.w,
-                                height: 38.w,
-                                color: const Color(0xFF7B1FE0),
-                              ),
-                            ),
-                          ),
+                          child: const AppProfileAvatar(),
                         ),
                       ],
                     );
@@ -205,26 +194,10 @@ class _PostCard extends StatelessWidget {
                         // ── Author row ───────────────────────────
                         Row(
                           children: [
-                            Container(
-                              width: 26.w,
-                              height: 26.w,
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF7B1FE0),
-                                borderRadius: BorderRadius.circular(8.r),
-                              ),
-                              child: Text(
-                                'ET',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 10.sp,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
+                            _PostAuthorAvatar(author: post.author),
                             SizedBox(width: 8.w),
                             Text(
-                              'Elite Trading',
+                              post.author.name,
                               style: GoogleFonts.poppins(
                                 fontSize: 13.sp,
                                 fontWeight: FontWeight.w600,
@@ -232,9 +205,12 @@ class _PostCard extends StatelessWidget {
                               ),
                             ),
                             SizedBox(width: 4.w),
-                            Icon(Icons.verified,
-                                size: 14.sp,
-                                color: const Color(0xFF7B1FE0)),
+                            if (post.author.isVerified) ...[
+                              SizedBox(width: 4.w),
+                              Icon(Icons.verified,
+                                  size: 14.sp,
+                                  color: const Color(0xFF7B1FE0)),
+                            ],
                             const Spacer(),
                             Text(
                               post.timeAgo,
@@ -356,6 +332,46 @@ class _ImageFallback extends StatelessWidget {
       color: const Color(0xFF1B1830),
       child: Icon(Icons.image_outlined,
           size: 40, color: Colors.white.withValues(alpha: 0.15)),
+    );
+  }
+}
+
+class _PostAuthorAvatar extends StatelessWidget {
+  final PostAuthor author;
+
+  const _PostAuthorAvatar({required this.author});
+
+  @override
+  Widget build(BuildContext context) {
+    final url = author.avatarUrl;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8.r),
+      child: url != null && url.isNotEmpty
+          ? Image.network(
+              url,
+              width: 26.w,
+              height: 26.w,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => _fallback(),
+            )
+          : _fallback(),
+    );
+  }
+
+  Widget _fallback() {
+    return Container(
+      width: 26.w,
+      height: 26.w,
+      alignment: Alignment.center,
+      color: const Color(0xFF7B1FE0),
+      child: Text(
+        author.initials,
+        style: GoogleFonts.poppins(
+          fontSize: 10.sp,
+          fontWeight: FontWeight.w700,
+          color: Colors.white,
+        ),
+      ),
     );
   }
 }

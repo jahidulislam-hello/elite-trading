@@ -193,22 +193,34 @@ class _ProfileAvatarWidgetState extends State<ProfileAvatarWidget> {
             child: ClipOval(
               child: _pickedImage != null
                   ? Image.file(
-                _pickedImage!,
-                width: 90.w,
-                height: 90.w,
-                fit: BoxFit.cover,
-              )
-                  : Image.network(
-                widget.networkImageUrl,
-                width: 90.w,
-                height: 90.w,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
-                  width: 90.w,
-                  height: 90.w,
-                  color: const Color(0xFF7B1FE0),
-                ),
-              ),
+                      _pickedImage!,
+                      width: 90.w,
+                      height: 90.w,
+                      fit: BoxFit.cover,
+                    )
+                  : (widget.networkImageUrl.isNotEmpty
+                      ? Image.network(
+                          widget.networkImageUrl,
+                          width: 90.w,
+                          height: 90.w,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            width: 90.w,
+                            height: 90.w,
+                            color: const Color(0xFF7B1FE0),
+                            alignment: Alignment.center,
+                            child: Icon(Icons.person,
+                                color: Colors.white70, size: 36.sp),
+                          ),
+                        )
+                      : Container(
+                          width: 90.w,
+                          height: 90.w,
+                          color: const Color(0xFF7B1FE0),
+                          alignment: Alignment.center,
+                          child: Icon(Icons.person,
+                              color: Colors.white70, size: 36.sp),
+                        )),
             ),
           ),
         ),

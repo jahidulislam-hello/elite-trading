@@ -1,6 +1,7 @@
 import '../../core/constants/api_endpoints.dart';
 import '../../core/exceptions/app_exceptions.dart';
 import '../../core/services/api_service.dart';
+import '../../core/utils/access_parser.dart';
 import 'data/model/post_model.dart';
 
 /// Handles all post-related API calls for the mobile app.
@@ -32,11 +33,11 @@ class PostService {
     final data = response.data['data'] as Map<String, dynamic>? ?? {};
     final rawPosts = data['posts'] as List? ?? [];
     return PostListResult(
-      access: data['access'] as String? ?? 'full',
+      access: parseAccessLevel(data['access']),
       posts: rawPosts
           .map((e) => PostModel.fromJson(e as Map<String, dynamic>))
           .toList(),
-      totalPosts: data['totalPosts'] as int? ?? 0,
+      totalPosts: (data['totalPosts'] as num?)?.toInt() ?? 0,
       pagination: response.data['pagination'] as Map<String, dynamic>?,
     );
   }
@@ -79,7 +80,9 @@ class PostService {
       comments: rawComments
           .map((e) => CommentModel.fromJson(e as Map<String, dynamic>))
           .toList(),
-      pagination: response.data['pagination'] as Map<String, dynamic>?,
+      pagination: data is Map<String, dynamic>
+          ? data['pagination'] as Map<String, dynamic>?
+          : response.data['pagination'] as Map<String, dynamic>?,
     );
   }
 
@@ -132,7 +135,7 @@ class PostService {
     final data = response.data['data'] as Map<String, dynamic>? ?? {};
     return ToggleLikeResult(
       isLiked: data['isLiked'] as bool? ?? false,
-      likesCount: data['likesCount'] as int? ?? 0,
+      likesCount: (data['likesCount'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -148,7 +151,7 @@ class PostService {
     final data = response.data['data'] as Map<String, dynamic>? ?? {};
     return ToggleLikeResult(
       isLiked: data['isLiked'] as bool? ?? false,
-      likesCount: data['likesCount'] as int? ?? 0,
+      likesCount: (data['likesCount'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -156,9 +159,11 @@ class PostService {
   // 9. SHARE POST
   // POST /api/v1/post/app/:id/share
   // ──────────────────────────────────────────────────────────────────────────
-  Future<void> sharePost(String postId) async {
+  Future<int> sharePost(String postId) async {
     final response = await _api.post(ApiEndpoints.sharePost(postId));
     _assertSuccess(response.data, 'Failed to record share.');
+    final data = response.data['data'] as Map<String, dynamic>? ?? {};
+    return (data['sharesCount'] as num?)?.toInt() ?? 0;
   }
 
   // ──────────────────────────────────────────────────────────────────────────

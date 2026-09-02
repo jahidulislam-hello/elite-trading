@@ -38,7 +38,7 @@ abstract class ApiEndpoints {
   /// GET   Authorization: Bearer <auth-token>
   static const String myProfile = '/api/v1/user/my-profile';
 
-  /// POST  { firstName?, lastName?, email?, phone?, address? }
+  /// PATCH { name?, firstName?, lastName?, phone?, address? }
   static const String updateProfile = '/api/v1/user/update-profile';
 
   // ─── Subscription Plans ──────────────────────────────────────────────────
@@ -67,6 +67,11 @@ abstract class ApiEndpoints {
   ///        Authorization: Bearer
   /// → returns { checkoutUrl?, paymentRequired, purchase, ... }
   static const String initiatePurchase = '/api/v1/subscription/purchase/initiate';
+
+  // ─── Coupon ──────────────────────────────────────────────────────────────
+
+  /// POST  { code }  → validates a coupon and returns the coupon document
+  static const String validateCoupon = '/api/v1/coupon/validate';
 
   // ─── Signal (App / Mobile) ───────────────────────────────────────────────
 
@@ -149,6 +154,17 @@ abstract class ApiEndpoints {
 
   // ─── Dashboard ───────────────────────────────────────────────────────────
   static const String dashboard = '/api/v1/dashboard';
+
+  // ─── Management (public content pages) ───────────────────────────────────
+
+  /// GET /api/v1/management/privacy
+  static const String managementPrivacy = '/api/v1/management/privacy';
+
+  /// GET /api/v1/management/terms
+  static const String managementTerms = '/api/v1/management/terms';
+
+  /// GET /api/v1/management/about
+  static const String managementAbout = '/api/v1/management/about';
 
   // ─── File Upload ─────────────────────────────────────────────────────────
   static const String upload = '/api/v1/upload';

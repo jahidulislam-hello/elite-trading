@@ -1,6 +1,7 @@
 import '../../core/constants/api_endpoints.dart';
 import '../../core/exceptions/app_exceptions.dart';
 import '../../core/services/api_service.dart';
+import '../../core/utils/access_parser.dart';
 import 'data/model/signal_model.dart';
 
 /// Handles all signal-related API calls for the mobile app.
@@ -27,17 +28,25 @@ class SignalService {
 
   // ──────────────────────────────────────────────────────────────────────────
   // 2. GET APP SIGNALS (active feed)
-  // GET /api/v1/signal/app?page=&limit=&category=
+  // GET /api/v1/signal/app?page=&limit=&category=&searchTerm=
   // ──────────────────────────────────────────────────────────────────────────
   Future<SignalListResult> getSignals({
     int page = 1,
     int limit = 20,
     String? category,
+    String? searchTerm,
   }) async {
+    final normalizedCategory = (category == null || category.isEmpty)
+        ? 'all'
+        : category.toLowerCase() == 'all'
+            ? 'all'
+            : category;
     final query = <String, dynamic>{
       'page': page,
       'limit': limit,
-      if (category != null && category != 'All') 'category': category,
+      'category': normalizedCategory,
+      if (searchTerm != null && searchTerm.trim().isNotEmpty)
+        'searchTerm': searchTerm.trim(),
     };
     final response =
         await _api.get(ApiEndpoints.signalsApp, queryParameters: query);
@@ -45,7 +54,7 @@ class SignalService {
     final data = response.data['data'] as Map<String, dynamic>? ?? {};
     final rawSignals = data['signals'] as List? ?? [];
     return SignalListResult(
-      access: data['access'] as String? ?? 'full',
+      access: parseAccessLevel(data['access']),
       signals: rawSignals
           .map((e) => SignalModel.fromJson(e as Map<String, dynamic>))
           .toList(),
@@ -60,21 +69,32 @@ class SignalService {
   Future<SignalHistoryResult> getSignalHistory({
     int page = 1,
     int limit = 20,
+    String? result,
+    String? searchTerm,
   }) async {
-    final query = <String, dynamic>{'page': page, 'limit': limit};
+    final normalizedResult = (result ?? 'All').trim();
+    final query = <String, dynamic>{
+      'page': page,
+      'limit': limit,
+      if (normalizedResult.isNotEmpty &&
+          normalizedResult.toLowerCase() != 'all')
+        'result': normalizedResult,
+      if (searchTerm != null && searchTerm.trim().isNotEmpty)
+        'searchTerm': searchTerm.trim(),
+    };
     final response =
         await _api.get(ApiEndpoints.signalsHistory, queryParameters: query);
     _assertSuccess(response.data, 'Failed to load signal history.');
     final data = response.data['data'] as Map<String, dynamic>? ?? {};
     final rawSignals = data['signals'] as List? ?? [];
     return SignalHistoryResult(
-      access: data['access'] as String? ?? 'full',
+      access: parseAccessLevel(data['access']),
       performanceOverview:
           data['performanceOverview'] as Map<String, dynamic>?,
       signals: rawSignals
           .map((e) => SignalHistoryModel.fromJson(e as Map<String, dynamic>))
           .toList(),
-      totalClosedSignals: data['totalClosedSignals'] as int? ?? 0,
+      totalClosedSignals: (data['totalClosedSignals'] as num?)?.toInt() ?? 0,
       pagination: response.data['pagination'] as Map<String, dynamic>?,
     );
   }

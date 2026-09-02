@@ -30,10 +30,11 @@ class SubscriptionService {
   // 2. GET TRIAL CONFIG (public)
   // GET /api/v1/subscription/trial-config
   // ──────────────────────────────────────────────────────────────────────────
-  Future<Map<String, dynamic>> getTrialConfig() async {
+  Future<TrialConfigModel> getTrialConfig() async {
     final response = await _api.get(ApiEndpoints.trialConfig);
     _assertSuccess(response.data, 'Failed to load trial config.');
-    return response.data['data'] as Map<String, dynamic>? ?? {};
+    final data = response.data['data'] as Map<String, dynamic>? ?? {};
+    return TrialConfigModel.fromJson(data);
   }
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -101,6 +102,26 @@ class SubscriptionService {
     _assertSuccess(response.data, 'Purchase initiation failed.');
     final data = response.data['data'] as Map<String, dynamic>? ?? {};
     return PurchaseResult.fromJson(data);
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // 7. VALIDATE COUPON
+  // POST /api/v1/coupon/validate   Body: { code }
+  //
+  // Responds 400 + success:false with the reason when the code is invalid,
+  // exhausted or expired.
+  // ──────────────────────────────────────────────────────────────────────────
+  Future<CouponModel> validateCoupon(String code) async {
+    final response = await _api.post(
+      ApiEndpoints.validateCoupon,
+      data: {'code': code.trim().toUpperCase()},
+    );
+    _assertSuccess(response.data, 'Invalid coupon code.');
+    final data = response.data['data'] as Map<String, dynamic>?;
+    if (data == null) {
+      throw ServerException('Invalid coupon code.', null);
+    }
+    return CouponModel.fromJson(data);
   }
 
   // ──────────────────────────────────────────────────────────────────────────

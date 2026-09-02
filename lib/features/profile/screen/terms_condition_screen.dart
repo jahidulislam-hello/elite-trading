@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../controller/profile_controller.dart';
+import '../management_service.dart';
 import '../widget/policy_content.dart';
 
 class TermsConditionScreen extends GetView<ProfileController> {
@@ -26,7 +27,6 @@ class TermsConditionScreen extends GetView<ProfileController> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // -------- Header --------
                   Row(
                     children: [
                       GestureDetector(
@@ -37,7 +37,8 @@ class TermsConditionScreen extends GetView<ProfileController> {
                             color: Colors.white.withValues(alpha: 0.08),
                             shape: BoxShape.circle,
                           ),
-                          child: Icon(Icons.arrow_back, color: Colors.white, size: 18.sp),
+                          child: Icon(Icons.arrow_back,
+                              color: Colors.white, size: 18.sp),
                         ),
                       ),
                       SizedBox(width: 10.w),
@@ -46,7 +47,7 @@ class TermsConditionScreen extends GetView<ProfileController> {
                         style: GoogleFonts.poppins(
                           fontSize: 22.sp,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFFFFFFFF),
+                          color: const Color(0xFFFFFFFF),
                         ),
                       ),
                     ],
@@ -54,7 +55,6 @@ class TermsConditionScreen extends GetView<ProfileController> {
 
                   SizedBox(height: 22.h),
 
-                  // -------- Top image card --------
                   Container(
                     width: double.infinity,
                     padding: EdgeInsets.symmetric(vertical: 30.h),
@@ -68,7 +68,8 @@ class TermsConditionScreen extends GetView<ProfileController> {
                         ],
                       ),
                       borderRadius: BorderRadius.circular(24.r),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                      border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.08)),
                     ),
                     child: Center(
                       child: Image.asset(
@@ -82,7 +83,7 @@ class TermsConditionScreen extends GetView<ProfileController> {
                   SizedBox(height: 26.h),
 
                   Text(
-                    'Privacy Policy',
+                    'Terms & Conditions',
                     style: GoogleFonts.poppins(
                       fontSize: 15.sp,
                       fontWeight: FontWeight.w700,
@@ -92,8 +93,7 @@ class TermsConditionScreen extends GetView<ProfileController> {
 
                   SizedBox(height: 12.h),
 
-                  // -------- Policy text card --------
-                  const PolicyContent(),
+                  const PolicyContent(type: ManagementType.terms),
                 ],
               ),
             ),

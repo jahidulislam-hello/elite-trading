@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:share_plus/share_plus.dart';
 
+import '../../../../core/constants/api_constants.dart';
 import '../../../../core/exceptions/app_exceptions.dart';
 import '../../data/model/post_model.dart';
 import '../../post_service.dart';
@@ -47,7 +50,8 @@ class PostController extends GetxController {
       totalPosts.value = result.totalPosts;
     } on AppException catch (e) {
       postsError.value = e.message;
-    } catch (_) {
+    } catch (e, s) {
+      debugPrint('loadPosts failed: $e\n$s');
       postsError.value = 'Failed to load posts. Please try again.';
     } finally {
       isPostsLoading.value = false;
@@ -168,16 +172,45 @@ class PostController extends GetxController {
   }
 
   Future<void> onSharePost(String postId) async {
+    final post = posts.firstWhereOrNull((p) => p.id == postId) ??
+        (selectedPost.value?.id == postId ? selectedPost.value : null);
+    if (post == null) return;
+
+    final shareUrl = '${ApiConstants.baseUrl}/post/$postId';
+    final text = '${post.title}\n\n'
+        '${post.excerpt}\n\n'
+        'View on Elite Trading: $shareUrl';
+
     try {
-      await _service.sharePost(postId);
-      _updatePostInList(postId,
-          sharesCount: (posts.firstWhereOrNull((p) => p.id == postId)
-                  ?.sharesCount ??
-              0) +
-              1);
-    } catch (_) {
-      // Share recording is best-effort; don't show error to user
+      final result = await SharePlus.instance.share(
+        ShareParams(
+          text: text,
+          subject: post.title,
+        ),
+      );
+
+      // Do not count a share when the user closes the platform share sheet.
+      if (result.status == ShareResultStatus.dismissed) return;
+
+      await _recordShare(postId);
+    } on MissingPluginException catch (e, s) {
+      debugPrint('sharePost plugin unavailable: $e\n$s');
+      await Clipboard.setData(ClipboardData(text: shareUrl));
+      Get.snackbar(
+        'Link copied',
+        'Share sheet is unavailable, so the post link was copied instead.',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      await _recordShare(postId);
+    } catch (e, s) {
+      debugPrint('sharePost failed: $e\n$s');
+      _showError('Unable to share this post. Please try again.');
     }
+  }
+
+  Future<void> _recordShare(String postId) async {
+    final sharesCount = await _service.sharePost(postId);
+    _updatePostInList(postId, sharesCount: sharesCount);
   }
 
   // ─── Helpers ─────────────────────────────────────────────────────────────
@@ -185,13 +218,22 @@ class PostController extends GetxController {
   void _updatePostInList(String postId,
       {int? likes, int? commentsCount, int? sharesCount, bool? isLiked}) {
     final index = posts.indexWhere((p) => p.id == postId);
-    if (index < 0) return;
-    posts[index] = posts[index].copyWith(
-      likes: likes,
-      commentsCount: commentsCount,
-      sharesCount: sharesCount,
-      isLiked: isLiked,
-    );
+    if (index >= 0) {
+      posts[index] = posts[index].copyWith(
+        likes: likes,
+        commentsCount: commentsCount,
+        sharesCount: sharesCount,
+        isLiked: isLiked,
+      );
+    }
+    if (selectedPost.value?.id == postId) {
+      selectedPost.value = selectedPost.value!.copyWith(
+        likes: likes,
+        commentsCount: commentsCount,
+        sharesCount: sharesCount,
+        isLiked: isLiked,
+      );
+    }
   }
 
   void _showError(String msg) {

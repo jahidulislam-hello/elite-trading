@@ -5,37 +5,64 @@
 // ─── Market Hours ─────────────────────────────────────────────────────────
 
 class MarketHourModel {
+  final String id;
   final String name;
+  final String timezone;
   final bool isOpen;
-  final String? openTime;
-  final String? closeTime;
-  final String? utcRange;
+
+  /// Current wall-clock time in the market's timezone, e.g. `18:15:55`.
+  final String? localTime;
+
+  /// Trading session expressed in UTC, e.g. `22:00-07:00 UTC`.
+  final String? sessionUtc;
   final String flag;
 
   const MarketHourModel({
+    this.id = '',
     required this.name,
+    this.timezone = '',
     required this.isOpen,
-    this.openTime,
-    this.closeTime,
-    this.utcRange,
+    this.localTime,
+    this.sessionUtc,
     required this.flag,
   });
 
+  /// Session range without the `UTC` suffix, e.g. `22:00 – 07:00`.
+  String get sessionRangeLabel {
+    final raw = sessionUtc?.replaceAll('UTC', '').trim();
+    if (raw == null || raw.isEmpty) return '—';
+    final parts = raw.split('-');
+    if (parts.length != 2) return raw;
+    return '${parts[0].trim()} – ${parts[1].trim()}';
+  }
+
+  /// Local time trimmed to `HH:mm`, prefixed for display.
+  String get localTimeLabel {
+    final raw = localTime?.trim();
+    if (raw == null || raw.isEmpty) return '';
+    final parts = raw.split(':');
+    final hhmm = parts.length >= 2 ? '${parts[0]}:${parts[1]}' : raw;
+    return 'Local $hhmm';
+  }
+
   factory MarketHourModel.fromJson(Map<String, dynamic> json) {
-    // Backend returns: { name, isOpen, openTime, closeTime, utcRange }
+    // Backend returns:
+    // { id, name, timezone, status, isOpen, localTime, sessionUtc }
     final name = json['name'] as String? ?? '';
     return MarketHourModel(
+      id: json['id'] as String? ?? '',
       name: name,
-      isOpen: json['isOpen'] as bool? ?? false,
-      openTime: json['openTime'] as String?,
-      closeTime: json['closeTime'] as String?,
-      utcRange: json['utcRange'] as String?,
-      flag: _flagForMarket(name),
+      timezone: json['timezone'] as String? ?? '',
+      isOpen: json['isOpen'] as bool? ??
+          (json['status'] as String?)?.toUpperCase() == 'OPEN',
+      localTime: json['localTime'] as String?,
+      sessionUtc: json['sessionUtc'] as String?,
+      flag: _flagForMarket(json['id'] as String? ?? name),
     );
   }
 
-  static String _flagForMarket(String name) {
-    switch (name.toLowerCase()) {
+  static String _flagForMarket(String key) {
+    switch (key.toLowerCase().replaceAll('_', ' ')) {
       case 'sydney':
         return '🇦🇺';
       case 'tokyo':
@@ -509,7 +536,7 @@ class CandleModel {
 
   factory CandleModel.fromJson(Map<String, dynamic> json) {
     return CandleModel(
-      time: json['time'] as int? ?? 0,
+      time: (json['time'] as num?)?.toInt() ?? 0,
       open: (json['open'] as num?)?.toDouble() ?? 0,
       high: (json['high'] as num?)?.toDouble() ?? 0,
       low: (json['low'] as num?)?.toDouble() ?? 0,
@@ -518,15 +545,44 @@ class CandleModel {
   }
 }
 
+class ChartOverlays {
+  final double? entry;
+  final double? stopLoss;
+  final List<double> takeProfits;
+
+  const ChartOverlays({
+    this.entry,
+    this.stopLoss,
+    this.takeProfits = const [],
+  });
+
+  factory ChartOverlays.fromJson(Map<String, dynamic>? json) {
+    if (json == null) return const ChartOverlays();
+    final tps = json['takeProfits'] as List? ?? [];
+    return ChartOverlays(
+      entry: (json['entry'] as num?)?.toDouble(),
+      stopLoss: (json['stopLoss'] as num?)?.toDouble(),
+      takeProfits: tps
+          .map((e) => (e as num?)?.toDouble())
+          .whereType<double>()
+          .toList(),
+    );
+  }
+}
+
 class SignalChartData {
   final String timeframe;
   final String symbol;
   final List<CandleModel> candles;
+  final ChartOverlays overlays;
+  final String? source;
 
   const SignalChartData({
     required this.timeframe,
     required this.symbol,
     required this.candles,
+    this.overlays = const ChartOverlays(),
+    this.source,
   });
 
   factory SignalChartData.fromJson(Map<String, dynamic> json) {
@@ -537,6 +593,9 @@ class SignalChartData {
       candles: rawCandles
           .map((e) => CandleModel.fromJson(e as Map<String, dynamic>))
           .toList(),
+      overlays: ChartOverlays.fromJson(
+          json['overlays'] as Map<String, dynamic>?),
+      source: json['source'] as String?,
     );
   }
 }

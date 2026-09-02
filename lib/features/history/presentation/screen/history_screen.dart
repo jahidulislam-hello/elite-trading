@@ -5,9 +5,9 @@ import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/routes/app_routes.dart';
 import '../../../../core/utils/customeTextField/custom_text_field.dart';
-import '../../data/model/history_signal_model.dart';
+import '../../../profile/widget/app_profile_avatar.dart';
+import '../../../signals/data/model/signal_model.dart';
 import '../container/history_container.dart';
-
 
 class HistoryScreen extends GetView<HistoryContainer> {
   const HistoryScreen({super.key});
@@ -17,7 +17,7 @@ class HistoryScreen extends GetView<HistoryContainer> {
     return Scaffold(
       body: Stack(
         children: [
-          Container(
+          SizedBox(
             height: MediaQuery.of(context).size.height,
             width: MediaQuery.of(context).size.width,
             child: Image.asset(
@@ -33,7 +33,7 @@ class HistoryScreen extends GetView<HistoryContainer> {
                 children: [
                   SizedBox(height: 16.h),
 
-                  // -------- Header --------
+                  // ── Header ──────────────────────────────────────────
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -63,29 +63,15 @@ class HistoryScreen extends GetView<HistoryContainer> {
                       ),
                       SizedBox(width: 12.w),
                       GestureDetector(
-                        onTap: (){
-                          Get.toNamed(AppRoutes.profilePage);
-                        },
-                        child: ClipOval(
-                          child: Image.network(
-                            "https://media.sproutsocial.com/uploads/2022/06/profile-picture.jpeg",
-                            width: 38.w,
-                            height: 38.w,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(
-                              width: 38.w,
-                              height: 38.w,
-                              color: const Color(0xFF7B1FE0),
-                            ),
-                          ),
-                        ),
+                        onTap: () => Get.toNamed(AppRoutes.profilePage),
+                        child: const AppProfileAvatar(),
                       ),
                     ],
                   ),
 
                   SizedBox(height: 18.h),
 
-                  // -------- Performance overview (glass) --------
+                  // ── Performance overview ─────────────────────────────
                   _GlassContainer(
                     padding: EdgeInsets.all(16.w),
                     borderRadius: 18.r,
@@ -102,51 +88,68 @@ class HistoryScreen extends GetView<HistoryContainer> {
                           ),
                         ),
                         SizedBox(height: 14.h),
-                        SizedBox(
-                          height: 49.h,
-                          child: Obx(
-                                () => Row(
-                                                              children: [
-                                _StatItem(
-                                  value: '${controller.wins.value}',
-                                  label: 'Wins',
-                                  color: const Color(0xFF2ECC71),
+                        Obx(() => controller.isLoading.value &&
+                                controller.signals.isEmpty
+                            ? SizedBox(
+                                height: 49.h,
+                                child: const Center(
+                                  child: CircularProgressIndicator(
+                                    color: Color(0xFF7B1FE0),
+                                    strokeWidth: 2,
+                                  ),
                                 ),
-                                VerticalDivider(color: Colors.white38, thickness: 0.5),
-                                _StatItem(
-                                  value: '${controller.losses.value}',
-                                  label: 'Losses',
-                                  color: const Color(0xFFE0405C),
+                              )
+                            : SizedBox(
+                                height: 49.h,
+                                child: Row(
+                                  children: [
+                                    _StatItem(
+                                      value: '${controller.wins.value}',
+                                      label: 'Wins',
+                                      color: const Color(0xFF2ECC71),
+                                    ),
+                                    VerticalDivider(
+                                        color: Colors.white38,
+                                        thickness: 0.5),
+                                    _StatItem(
+                                      value: '${controller.losses.value}',
+                                      label: 'Losses',
+                                      color: const Color(0xFFE0405C),
+                                    ),
+                                    VerticalDivider(
+                                        color: Colors.white38,
+                                        thickness: 0.5),
+                                    _StatItem(
+                                      value: '${controller.breakeven.value}',
+                                      label: 'Breakeven',
+                                      color: Colors.white70,
+                                    ),
+                                    VerticalDivider(
+                                        color: Colors.white38,
+                                        thickness: 0.5),
+                                    _StatItem(
+                                      value:
+                                          '${controller.winRate.toStringAsFixed(1)}%',
+                                      label: 'Win Rate',
+                                      color: const Color(0xFFE0A11F),
+                                    ),
+                                  ],
                                 ),
-                                VerticalDivider(color: Colors.white38, thickness: 0.5),
-                                _StatItem(
-                                  value: '${controller.breakeven.value}',
-                                  label: 'Breakeven',
-                                  color: Colors.white70,
-                                ),
-                                VerticalDivider(color: Colors.white38, thickness: 0.5),
-                                _StatItem(
-                                  value: '${controller.winRate.toStringAsFixed(1)}%',
-                                  label: 'Win Rate',
-                                  color: const Color(0xFFE0A11F),
-                                ),
-                                                              ],
-                                                            ),
-                          ),
-                        ),
+                              )),
                       ],
                     ),
                   ),
 
                   SizedBox(height: 18.h),
 
-                  // -------- Search + Filter --------
+                  // ── Search + Filter ──────────────────────────────────
                   Row(
                     children: [
                       Expanded(
                         child: CustomTextField(
-                          controller: TextEditingController(),
-                          onChanged: (value) => controller.onSearchChanged(value ?? ''),
+                          controller: controller.searchController,
+                          onChanged: (value) =>
+                              controller.onSearchChanged(value ?? ''),
                           hintText: 'Search Signals...',
                           prefixIcon: Icon(Icons.search, size: 18.sp),
                           iconColor: Colors.white38,
@@ -162,28 +165,42 @@ class HistoryScreen extends GetView<HistoryContainer> {
                         ),
                       ),
                       SizedBox(width: 10.w),
-                      GestureDetector(
-                        onTap: controller.toggleFilterPanel,
-                        child: Container(
-                          height: 50.h,
-                          width: 50.h,
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF1B1830),
-                            borderRadius: BorderRadius.circular(14.r),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+                      Obx(() {
+                        final isFiltered =
+                            controller.selectedFilter.value != 'All';
+                        return GestureDetector(
+                          onTap: controller.toggleFilterPanel,
+                          child: Container(
+                            height: 50.h,
+                            width: 50.h,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF1B1830),
+                              borderRadius: BorderRadius.circular(14.r),
+                              border: Border.all(
+                                color: isFiltered
+                                    ? const Color(0xFF7B1FE0)
+                                    : Colors.white.withValues(alpha: 0.06),
+                              ),
+                            ),
+                            child: Icon(
+                              Icons.tune,
+                              size: 18.sp,
+                              color: isFiltered
+                                  ? const Color(0xFF9B6BFF)
+                                  : Colors.white70,
+                            ),
                           ),
-                          child: Icon(Icons.tune, size: 18.sp, color: Colors.white70),
-                        ),
-                      ),
+                        );
+                      }),
                     ],
                   ),
 
                   SizedBox(height: 16.h),
 
                   Obx(
-                        () => Text(
-                      'CLOSED SIGNALS · ${controller.totalClosed} TOTAL',
+                    () => Text(
+                      'CLOSED SIGNALS · ${controller.totalClosed.value} TOTAL',
                       style: GoogleFonts.poppins(
                         fontSize: 10.sp,
                         fontWeight: FontWeight.w600,
@@ -195,14 +212,43 @@ class HistoryScreen extends GetView<HistoryContainer> {
 
                   SizedBox(height: 12.h),
 
-                  // -------- List --------
+                  // ── List ─────────────────────────────────────────────
                   Expanded(
                     child: Obx(() {
+                      // Loading state
+                      if (controller.isLoading.value &&
+                          controller.signals.isEmpty) {
+                        return const Center(
+                          child: CircularProgressIndicator(
+                              color: Color(0xFF7B1FE0), strokeWidth: 2),
+                        );
+                      }
+
+                      // No subscription / access locked
+                      if (controller.accessLevel.value != 'full' &&
+                          controller.signals.isEmpty) {
+                        return _LockedState(
+                            onSubscribe: () =>
+                                Get.toNamed(AppRoutes.subscripFirstPage));
+                      }
+
+                      // Error state
+                      if (controller.error.value.isNotEmpty &&
+                          controller.signals.isEmpty) {
+                        return _ErrorState(
+                          message: controller.error.value,
+                          onRetry: controller.loadHistory,
+                        );
+                      }
+
                       final list = controller.filteredSignals;
                       if (list.isEmpty) {
+                        final filter = controller.selectedFilter.value;
                         return Center(
                           child: Text(
-                            'No closed signals found',
+                            filter == 'All'
+                                ? 'No closed signals found'
+                                : 'No $filter signals found',
                             style: GoogleFonts.poppins(
                               fontSize: 13.sp,
                               color: Colors.white38,
@@ -210,11 +256,18 @@ class HistoryScreen extends GetView<HistoryContainer> {
                           ),
                         );
                       }
-                      return ListView.builder(
-                        padding: EdgeInsets.only(bottom: 100.h),
-                        itemCount: list.length,
-                        itemBuilder: (context, index) =>
-                            _HistoryCard(item: list[index]),
+
+                      return RefreshIndicator(
+                        onRefresh: () =>
+                            controller.loadHistory(refresh: true),
+                        color: const Color(0xFF7B1FE0),
+                        backgroundColor: const Color(0xFF1B1830),
+                        child: ListView.builder(
+                          padding: EdgeInsets.only(bottom: 100.h),
+                          itemCount: list.length,
+                          itemBuilder: (context, index) =>
+                              _HistoryCard(item: list[index]),
+                        ),
                       );
                     }),
                   ),
@@ -223,14 +276,17 @@ class HistoryScreen extends GetView<HistoryContainer> {
             ),
           ),
 
-          // -------- Filter dropdown panel (overlay) --------
+          // ── Filter dropdown panel (overlay) ──────────────────────────
           Obx(() {
-            if (!controller.isFilterPanelOpen.value) return const SizedBox.shrink();
+            if (!controller.isFilterPanelOpen.value) {
+              return const SizedBox.shrink();
+            }
             return Stack(
               children: [
                 GestureDetector(
                   onTap: controller.closeFilterPanel,
-                  child: Container(color: Colors.black.withValues(alpha: 0.3)),
+                  child: Container(
+                      color: Colors.black.withValues(alpha: 0.3)),
                 ),
                 Positioned(
                   top: 220.h,
@@ -246,12 +302,17 @@ class HistoryScreen extends GetView<HistoryContainer> {
   }
 }
 
+// ────────────────────────────────────────────────────────────────────────────
+// Stat item
+// ────────────────────────────────────────────────────────────────────────────
+
 class _StatItem extends StatelessWidget {
   final String value;
   final String label;
   final Color color;
 
-  const _StatItem({required this.value, required this.label, required this.color});
+  const _StatItem(
+      {required this.value, required this.label, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -281,6 +342,10 @@ class _StatItem extends StatelessWidget {
   }
 }
 
+// ────────────────────────────────────────────────────────────────────────────
+// Filter panel
+// ────────────────────────────────────────────────────────────────────────────
+
 class _FilterPanel extends StatelessWidget {
   final HistoryContainer controller;
   const _FilterPanel({required this.controller});
@@ -291,17 +356,21 @@ class _FilterPanel extends StatelessWidget {
       padding: EdgeInsets.symmetric(vertical: 10.w, horizontal: 6.w),
       borderRadius: 16.r,
       child: Obx(
-            () => Column(
+        () => Column(
           mainAxisSize: MainAxisSize.min,
           children: controller.filters.map((filter) {
             final isSelected = controller.selectedFilter.value == filter;
             return GestureDetector(
               onTap: () => controller.selectFilter(filter),
               child: Container(
-                margin: EdgeInsets.symmetric(horizontal: 6.w, vertical: 4.h),
-                padding: EdgeInsets.symmetric(horizontal: 22.w, vertical: 10.h),
+                margin:
+                    EdgeInsets.symmetric(horizontal: 6.w, vertical: 4.h),
+                padding: EdgeInsets.symmetric(
+                    horizontal: 22.w, vertical: 10.h),
                 decoration: BoxDecoration(
-                  color: isSelected ? const Color(0xFF7B1FE0) : Colors.transparent,
+                  color: isSelected
+                      ? const Color(0xFF7B1FE0)
+                      : Colors.transparent,
                   borderRadius: BorderRadius.circular(24.r),
                 ),
                 child: Text(
@@ -322,20 +391,24 @@ class _FilterPanel extends StatelessWidget {
   }
 }
 
+// ────────────────────────────────────────────────────────────────────────────
+// History Card — uses SignalHistoryModel from API
+// ────────────────────────────────────────────────────────────────────────────
+
 class _HistoryCard extends StatelessWidget {
-  final HistorySignalModel item;
+  final SignalHistoryModel item;
   const _HistoryCard({required this.item});
 
   @override
   Widget build(BuildContext context) {
-    final isWin = item.result == HistoryResult.win;
-    final isLoss = item.result == HistoryResult.loss;
-    final resultColor = isWin
+    final resultColor = item.isWin
         ? const Color(0xFF2ECC71)
-        : isLoss
-        ? const Color(0xFFE0405C)
-        : Colors.white54;
-    final isBuy = item.side == HistorySide.buy;
+        : item.isLoss
+            ? const Color(0xFFE0405C)
+            : Colors.white54;
+
+    final isBuy = item.direction == 'BUY';
+    final pnl = item.pnlPercent ?? 0.0;
 
     return Padding(
       padding: EdgeInsets.only(bottom: 14.h),
@@ -345,6 +418,7 @@ class _HistoryCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ── Top row: asset + PnL ─────────────────────────────
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -359,18 +433,18 @@ class _HistoryCard extends StatelessWidget {
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
-                        isWin
+                        item.isWin
                             ? Icons.check
-                            : isLoss
-                            ? Icons.close
-                            : Icons.remove,
+                            : item.isLoss
+                                ? Icons.close
+                                : Icons.remove,
                         size: 13.sp,
                         color: resultColor,
                       ),
                     ),
                     SizedBox(width: 8.w),
                     Text(
-                      item.pair,
+                      item.asset,
                       style: GoogleFonts.poppins(
                         fontSize: 14.sp,
                         fontWeight: FontWeight.w700,
@@ -380,7 +454,8 @@ class _HistoryCard extends StatelessWidget {
                   ],
                 ),
                 Text(
-                  '${item.profitPercent >= 0 ? '+' : ''}${item.profitPercent.toStringAsFixed(2)}%',
+                  item.pnlLabel ??
+                      '${pnl >= 0 ? '+' : ''}${pnl.toStringAsFixed(2)}%',
                   style: GoogleFonts.poppins(
                     fontSize: 14.sp,
                     fontWeight: FontWeight.w700,
@@ -389,70 +464,99 @@ class _HistoryCard extends StatelessWidget {
                 ),
               ],
             ),
+
             SizedBox(height: 8.h),
+
+            // ── Direction + category + R:R ───────────────────────
             Row(
               children: [
                 Container(
-                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+                  padding: EdgeInsets.symmetric(
+                      horizontal: 8.w, vertical: 3.h),
                   decoration: BoxDecoration(
-                    color: (isBuy ? const Color(0xFF2ECC71) : const Color(0xFFE0405C))
+                    color: (isBuy
+                            ? const Color(0xFF2ECC71)
+                            : const Color(0xFFE0405C))
                         .withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(6.r),
                   ),
                   child: Text(
-                    isBuy ? 'BUY' : 'SELL',
+                    item.direction,
                     style: GoogleFonts.poppins(
                       fontSize: 9.sp,
                       fontWeight: FontWeight.w700,
-                      color: isBuy ? const Color(0xFF2ECC71) : const Color(0xFFE0405C),
+                      color: isBuy
+                          ? const Color(0xFF2ECC71)
+                          : const Color(0xFFE0405C),
                     ),
                   ),
                 ),
                 SizedBox(width: 8.w),
                 Text(
                   item.categoryLabel,
-                  style: GoogleFonts.poppins(fontSize: 11.sp, color: Colors.white54),
+                  style: GoogleFonts.poppins(
+                      fontSize: 11.sp, color: Colors.white54),
                 ),
+                SizedBox(width: 8.w),
+                if (item.timeframeLabel.isNotEmpty)
+                  Text(
+                    '· ${item.timeframeLabel}',
+                    style: GoogleFonts.poppins(
+                        fontSize: 11.sp, color: Colors.white38),
+                  ),
                 const Spacer(),
-                Text(
-                  'R:R ${item.riskReward}',
-                  style: GoogleFonts.poppins(fontSize: 11.sp, color: Colors.white38),
-                ),
+                if (item.riskRewardRatio != null)
+                  Text(
+                    'R:R ${item.riskRewardRatio}',
+                    style: GoogleFonts.poppins(
+                        fontSize: 11.sp, color: Colors.white38),
+                  ),
               ],
             ),
+
             SizedBox(height: 10.h),
             Divider(color: Colors.white24, thickness: 0.5),
             SizedBox(height: 10.h),
+
+            // ── Price movement + duration + result badge ─────────
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  '\$${item.entryPrice.toStringAsFixed(2)} → \$${item.exitPrice.toStringAsFixed(2)}',
-                  style: GoogleFonts.poppins(
-                    fontSize: 12.sp,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.white70,
+                Expanded(
+                  child: Text(
+                    item.priceMovementLabel,
+                    style: GoogleFonts.poppins(
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white70,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 Row(
                   children: [
-                    Text(
-                      item.duration,
-                      style: GoogleFonts.poppins(fontSize: 11.sp, color: Colors.white38),
-                    ),
-                    SizedBox(width: 8.w),
+                    if (item.duration != null) ...[
+                      Text(
+                        item.duration!,
+                        style: GoogleFonts.poppins(
+                            fontSize: 11.sp, color: Colors.white38),
+                      ),
+                      SizedBox(width: 8.w),
+                    ],
                     Container(
-                      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+                      padding: EdgeInsets.symmetric(
+                          horizontal: 8.w, vertical: 3.h),
                       decoration: BoxDecoration(
                         color: resultColor.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(6.r),
                       ),
                       child: Text(
-                        isWin
-                            ? 'WIN'
-                            : isLoss
-                            ? 'LOSS'
-                            : 'BE',
+                        item.outcomeLabel ??
+                            (item.isWin
+                                ? 'WIN'
+                                : item.isLoss
+                                    ? 'LOSS'
+                                    : 'BE'),
                         style: GoogleFonts.poppins(
                           fontSize: 9.sp,
                           fontWeight: FontWeight.w700,
@@ -464,10 +568,14 @@ class _HistoryCard extends StatelessWidget {
                 ),
               ],
             ),
+
             SizedBox(height: 6.h),
+
+            // ── Closed date ──────────────────────────────────────
             Text(
-              item.closedDate,
-              style: GoogleFonts.poppins(fontSize: 10.sp, color: Colors.white24),
+              item.closedLabel,
+              style:
+                  GoogleFonts.poppins(fontSize: 10.sp, color: Colors.white24),
             ),
           ],
         ),
@@ -475,6 +583,127 @@ class _HistoryCard extends StatelessWidget {
     );
   }
 }
+
+// ────────────────────────────────────────────────────────────────────────────
+// Locked state (no subscription)
+// ────────────────────────────────────────────────────────────────────────────
+
+class _LockedState extends StatelessWidget {
+  final VoidCallback onSubscribe;
+  const _LockedState({required this.onSubscribe});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 24.w),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: EdgeInsets.all(20.w),
+              decoration: BoxDecoration(
+                color: const Color(0xFF7B1FE0).withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+                border: Border.all(
+                    color: const Color(0xFF7B1FE0).withValues(alpha: 0.3)),
+              ),
+              child: Icon(Icons.lock_outline,
+                  size: 36.sp, color: const Color(0xFF9B6BFF)),
+            ),
+            SizedBox(height: 20.h),
+            Text(
+              'History Locked',
+              style: GoogleFonts.poppins(
+                fontSize: 18.sp,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ),
+            SizedBox(height: 10.h),
+            Text(
+              'Subscribe to unlock your completed signal history and track performance.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(
+                fontSize: 13.sp,
+                color: Colors.white54,
+                height: 1.5,
+              ),
+            ),
+            SizedBox(height: 24.h),
+            GestureDetector(
+              onTap: onSubscribe,
+              child: Container(
+                width: double.infinity,
+                height: 50.h,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF9B2BFF), Color(0xFF6A1BFF)],
+                  ),
+                  borderRadius: BorderRadius.circular(14.r),
+                ),
+                child: Text(
+                  'Subscribe Now',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Error state
+// ────────────────────────────────────────────────────────────────────────────
+
+class _ErrorState extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+  const _ErrorState({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: 40.h),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.error_outline, color: Colors.redAccent, size: 32.sp),
+            SizedBox(height: 12.h),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(
+                  fontSize: 13.sp, color: Colors.white54),
+            ),
+            SizedBox(height: 14.h),
+            TextButton(
+              onPressed: onRetry,
+              child: Text(
+                'Retry',
+                style: GoogleFonts.poppins(
+                    fontSize: 13.sp, color: const Color(0xFF7B1FE0)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Glass container
+// ────────────────────────────────────────────────────────────────────────────
 
 class _GlassContainer extends StatelessWidget {
   final Widget child;

@@ -19,6 +19,7 @@ class PostModel {
   final String publishedLabel;
   // User-specific
   final bool isLiked;
+  final PostAuthor author;
 
   const PostModel({
     required this.id,
@@ -34,6 +35,7 @@ class PostModel {
     required this.timeAgo,
     required this.publishedLabel,
     this.isLiked = false,
+    this.author = const PostAuthor(),
   });
 
   PostModel copyWith({
@@ -56,6 +58,7 @@ class PostModel {
       timeAgo: timeAgo,
       publishedLabel: publishedLabel,
       isLiked: isLiked ?? this.isLiked,
+      author: author,
     );
   }
 
@@ -65,10 +68,14 @@ class PostModel {
       title: json['title'] as String? ?? '',
       body: json['body'] as String? ?? '',
       category: json['category'] as String? ?? '',
-      coverImage: json['coverImage'] as String?,
-      likes: json['likes'] as int? ?? 0,
-      commentsCount: json['commentsCount'] as int? ?? 0,
-      sharesCount: json['sharesCount'] as int? ?? 0,
+      coverImage: (json['coverImage'] as String?)?.isNotEmpty == true
+          ? json['coverImage'] as String
+          : null,
+      likes: (json['likesCount'] as num?)?.toInt() ??
+          (json['likes'] as num?)?.toInt() ??
+          0,
+      commentsCount: (json['commentsCount'] as num?)?.toInt() ?? 0,
+      sharesCount: (json['sharesCount'] as num?)?.toInt() ?? 0,
       status: json['status'] as String? ?? 'Published',
       publishedAt: json['publishedAt'] != null
           ? DateTime.tryParse(json['publishedAt'].toString())
@@ -79,7 +86,11 @@ class PostModel {
               ? _formatDate(
                   DateTime.tryParse(json['publishedAt'].toString()))
               : ''),
-      isLiked: json['isLiked'] as bool? ?? false,
+      isLiked: json['isLikedByMe'] as bool? ??
+          json['isLiked'] as bool? ??
+          false,
+      author: PostAuthor.fromJson(
+          json['author'] as Map<String, dynamic>?),
     );
   }
 
@@ -99,6 +110,31 @@ class PostModel {
   }
 }
 
+class PostAuthor {
+  final String name;
+  final String? avatarUrl;
+  final String initials;
+  final bool isVerified;
+
+  const PostAuthor({
+    this.name = 'Elite Trading',
+    this.avatarUrl,
+    this.initials = 'ET',
+    this.isVerified = true,
+  });
+
+  factory PostAuthor.fromJson(Map<String, dynamic>? json) {
+    if (json == null) return const PostAuthor();
+    final avatar = json['avatarUrl'] as String?;
+    return PostAuthor(
+      name: json['name'] as String? ?? 'Elite Trading',
+      avatarUrl: avatar?.isNotEmpty == true ? avatar : null,
+      initials: json['initials'] as String? ?? 'ET',
+      isVerified: json['isVerified'] as bool? ?? false,
+    );
+  }
+}
+
 // ─── Comment Model ────────────────────────────────────────────────────────
 
 class CommentModel {
@@ -113,6 +149,9 @@ class CommentModel {
   final bool isLiked;
   final String timeAgo;
   final DateTime? createdAt;
+  final bool isOwner;
+  final bool canEdit;
+  final bool canDelete;
 
   const CommentModel({
     required this.id,
@@ -126,6 +165,9 @@ class CommentModel {
     this.isLiked = false,
     required this.timeAgo,
     this.createdAt,
+    this.isOwner = false,
+    this.canEdit = false,
+    this.canDelete = false,
   });
 
   CommentModel copyWith({
@@ -145,25 +187,41 @@ class CommentModel {
       isLiked: isLiked ?? this.isLiked,
       timeAgo: timeAgo,
       createdAt: createdAt,
+      isOwner: isOwner,
+      canEdit: canEdit,
+      canDelete: canDelete,
     );
   }
 
   factory CommentModel.fromJson(Map<String, dynamic> json) {
+    final user = json['user'] as Map<String, dynamic>?;
     final name = _extractName(json);
+    final avatar = user?['avatarUrl'] as String? ??
+        json['authorAvatar'] as String?;
     return CommentModel(
       id: json['_id']?.toString() ?? json['id']?.toString() ?? '',
       postId: json['postId']?.toString() ?? '',
-      userId: json['userId']?.toString() ?? '',
+      userId: user?['id']?.toString() ??
+          json['userId']?.toString() ??
+          '',
       authorName: name,
-      authorInitials: _initials(name),
-      authorAvatar: json['authorAvatar'] as String?,
+      authorInitials:
+          user?['initials'] as String? ?? _initials(name),
+      authorAvatar: avatar?.isNotEmpty == true ? avatar : null,
       text: json['text'] as String? ?? '',
-      likes: json['likes'] as int? ?? 0,
-      isLiked: json['isLiked'] as bool? ?? false,
+      likes: (json['likesCount'] as num?)?.toInt() ??
+          (json['likes'] as num?)?.toInt() ??
+          0,
+      isLiked: json['isLikedByMe'] as bool? ??
+          json['isLiked'] as bool? ??
+          false,
       timeAgo: json['timeAgo'] as String? ?? '',
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'].toString())
           : null,
+      isOwner: json['isOwner'] as bool? ?? false,
+      canEdit: json['canEdit'] as bool? ?? false,
+      canDelete: json['canDelete'] as bool? ?? false,
     );
   }
 
@@ -171,6 +229,8 @@ class CommentModel {
     // Backend may populate user name inside a nested user field
     if (json['user'] is Map<String, dynamic>) {
       final u = json['user'] as Map<String, dynamic>;
+      final directName = u['name'] as String? ?? '';
+      if (directName.isNotEmpty) return directName;
       final first = u['firstName'] as String? ?? '';
       final last = u['lastName'] as String? ?? '';
       final full = '$first $last'.trim();

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../profile/widget/app_profile_avatar.dart';
 import '../../data/model/signal_model.dart';
 import '../controller/signal_controller.dart';
 import '../widget/signal_card.dart';
@@ -60,19 +61,7 @@ class SignalScreen extends GetView<SignalController> {
                             onTap: () {
                               Get.toNamed(AppRoutes.profilePage);
                             },
-                            child: ClipOval(
-                              child: Image.network(
-                                "https://media.sproutsocial.com/uploads/2022/06/profile-picture.jpeg",
-                                width: 38.w,
-                                height: 38.w,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Container(
-                                  width: 38.w,
-                                  height: 38.w,
-                                  color: const Color(0xFF7B1FE0),
-                                ),
-                              ),
-                            ),
+                            child: const AppProfileAvatar(),
                           ),
                         ],
                       ),
@@ -239,11 +228,8 @@ class _MarketHourCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Display the open time if available, else "—"
-    final timeLabel = market.openTime != null && market.closeTime != null
-        ? '${market.openTime} – ${market.closeTime}'
-        : '—';
-    final utcLabel = market.utcRange ?? '';
+    final timeLabel = market.sessionRangeLabel;
+    final utcLabel = market.localTimeLabel;
 
     return Container(
       padding: EdgeInsets.all(12.w),
@@ -353,10 +339,10 @@ class _MarketHoursLoader extends StatelessWidget {
 
 class _MarketHoursFallback extends StatelessWidget {
   static const _markets = [
-    ('🇦🇺', 'Sydney'),
-    ('🇯🇵', 'Tokyo'),
-    ('🇬🇧', 'London'),
-    ('🇺🇸', 'New York'),
+    ('🇦🇺', 'Sydney', '22:00-07:00 UTC'),
+    ('🇯🇵', 'Tokyo', '00:00-09:00 UTC'),
+    ('🇬🇧', 'London', '08:00-17:00 UTC'),
+    ('🇺🇸', 'New York', '13:00-22:00 UTC'),
   ];
 
   @override
@@ -372,13 +358,13 @@ class _MarketHoursFallback extends StatelessWidget {
         childAspectRatio: 1.5,
       ),
       itemBuilder: (_, i) {
-        final (flag, name) = _markets[i];
+        final (flag, name, sessionUtc) = _markets[i];
         return _MarketHourCard(
           market: MarketHourModel(
             name: name,
             isOpen: false,
             flag: flag,
-            utcRange: '—',
+            sessionUtc: sessionUtc,
           ),
         );
       },

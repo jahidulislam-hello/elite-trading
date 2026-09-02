@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../profile/widget/app_profile_avatar.dart';
 import '../../data/model/post_model.dart';
 import '../controller/post_controller.dart';
 
@@ -140,8 +141,8 @@ class CommentScreen extends GetView<PostController> {
                                     ),
                                     SizedBox(height: 4.h),
                                     Obx(
-                                          () => Text(
-                                        '${post.likes} likes · ${controller.totalComments} comments',
+                                      () => Text(
+                                        '${controller.selectedPost.value?.likes ?? post.likes} likes · ${controller.totalComments} comments',
                                         style: GoogleFonts.poppins(
                                           fontSize: 11.sp,
                                           color: Colors.white54,
@@ -179,14 +180,46 @@ class CommentScreen extends GetView<PostController> {
                 SizedBox(height: 14.h),
 
                 Expanded(
-                  child: Obx(
-                        () => ListView.builder(
+                  child: Obx(() {
+                    if (controller.isCommentsLoading.value &&
+                        controller.comments.isEmpty) {
+                      return const Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xFF7B1FE0),
+                          strokeWidth: 2,
+                        ),
+                      );
+                    }
+                    if (controller.commentsError.value.isNotEmpty &&
+                        controller.comments.isEmpty) {
+                      return Center(
+                        child: Text(
+                          controller.commentsError.value,
+                          style: GoogleFonts.poppins(
+                            fontSize: 13.sp,
+                            color: Colors.white54,
+                          ),
+                        ),
+                      );
+                    }
+                    if (controller.comments.isEmpty) {
+                      return Center(
+                        child: Text(
+                          'No comments yet. Be the first to comment.',
+                          style: GoogleFonts.poppins(
+                            fontSize: 13.sp,
+                            color: Colors.white38,
+                          ),
+                        ),
+                      );
+                    }
+                    return ListView.builder(
                       padding: EdgeInsets.symmetric(horizontal: 20.w),
                       itemCount: controller.comments.length,
                       itemBuilder: (context, index) =>
                           _CommentTile(comment: controller.comments[index]),
-                    ),
-                  ),
+                    );
+                  }),
                 ),
 
                 // -------- Comment input --------
@@ -194,19 +227,7 @@ class CommentScreen extends GetView<PostController> {
                   padding: EdgeInsets.fromLTRB(20.w, 10.h, 20.w, 14.h),
                   child: Row(
                     children: [
-                      ClipOval(
-                        child: Image.network(
-                          "https://media.sproutsocial.com/uploads/2022/06/profile-picture.jpeg",
-                          width: 38.w,
-                          height: 38.w,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
-                            width: 38.w,
-                            height: 38.w,
-                            color: const Color(0xFF7B1FE0),
-                          ),
-                        ),
-                      ),
+                      const AppProfileAvatar(),
                       SizedBox(width: 10.w),
                       Expanded(
                         child: Container(
@@ -238,10 +259,22 @@ class CommentScreen extends GetView<PostController> {
                               ),
                               GestureDetector(
                                 onTap: controller.onSendComment,
-                                child: Icon(
-                                  Icons.send,
-                                  size: 18.sp,
-                                  color: const Color(0xFF7B1FE0),
+                                child: Obx(
+                                  () => controller.isSendingComment.value
+                                      ? SizedBox(
+                                          width: 18.w,
+                                          height: 18.w,
+                                          child:
+                                              const CircularProgressIndicator(
+                                            color: Color(0xFF7B1FE0),
+                                            strokeWidth: 2,
+                                          ),
+                                        )
+                                      : Icon(
+                                          Icons.send,
+                                          size: 18.sp,
+                                          color: const Color(0xFF7B1FE0),
+                                        ),
                                 ),
                               ),
                             ],
@@ -266,28 +299,14 @@ class _CommentTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final controller = Get.find<PostController>();
+
     return Padding(
       padding: EdgeInsets.only(bottom: 18.h),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 34.w,
-            height: 34.w,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: const Color(0xFF3A3160),
-              borderRadius: BorderRadius.circular(10.r),
-            ),
-            child: Text(
-              comment.authorInitials,
-              style: GoogleFonts.poppins(
-                fontSize: 11.sp,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-              ),
-            ),
-          ),
+          _CommentAvatar(comment: comment),
           SizedBox(width: 10.w),
           Expanded(
             child: Column(
@@ -311,6 +330,33 @@ class _CommentTile extends StatelessWidget {
                         color: Colors.white38,
                       ),
                     ),
+                    if (comment.canDelete) ...[
+                      SizedBox(width: 6.w),
+                      PopupMenuButton<String>(
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        color: const Color(0xFF1B1830),
+                        icon: Icon(Icons.more_vert,
+                            size: 17.sp, color: Colors.white38),
+                        onSelected: (value) {
+                          if (value == 'delete') {
+                            controller.onDeleteComment(comment.id);
+                          }
+                        },
+                        itemBuilder: (_) => [
+                          PopupMenuItem(
+                            value: 'delete',
+                            child: Text(
+                              'Delete',
+                              style: GoogleFonts.poppins(
+                                fontSize: 12.sp,
+                                color: Colors.redAccent,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
                 SizedBox(height: 6.h),
@@ -331,23 +377,81 @@ class _CommentTile extends StatelessWidget {
                   ),
                 ),
                 SizedBox(height: 6.h),
-                Row(
-                  children: [
-                    Icon(Icons.favorite_border, size: 14.sp, color: Colors.white38),
-                    SizedBox(width: 4.w),
-                    Text(
-                      '${comment.likes}',
-                      style: GoogleFonts.poppins(
-                        fontSize: 11.sp,
-                        color: Colors.white38,
-                      ),
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => controller.onToggleCommentLike(comment.id),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 4.h),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          comment.isLiked
+                              ? Icons.favorite
+                              : Icons.favorite_border,
+                          size: 14.sp,
+                          color: comment.isLiked
+                              ? Colors.redAccent
+                              : Colors.white38,
+                        ),
+                        SizedBox(width: 4.w),
+                        Text(
+                          '${comment.likes}',
+                          style: GoogleFonts.poppins(
+                            fontSize: 11.sp,
+                            color: comment.isLiked
+                                ? Colors.redAccent
+                                : Colors.white38,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _CommentAvatar extends StatelessWidget {
+  final CommentModel comment;
+
+  const _CommentAvatar({required this.comment});
+
+  @override
+  Widget build(BuildContext context) {
+    final url = comment.authorAvatar;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(10.r),
+      child: url != null && url.isNotEmpty
+          ? Image.network(
+              url,
+              width: 34.w,
+              height: 34.w,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => _initials(),
+            )
+          : _initials(),
+    );
+  }
+
+  Widget _initials() {
+    return Container(
+      width: 34.w,
+      height: 34.w,
+      alignment: Alignment.center,
+      color: const Color(0xFF3A3160),
+      child: Text(
+        comment.authorInitials,
+        style: GoogleFonts.poppins(
+          fontSize: 11.sp,
+          fontWeight: FontWeight.w700,
+          color: Colors.white,
+        ),
       ),
     );
   }

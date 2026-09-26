@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.elite_trading"
+    namespace = "com.example.elitetrading"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -16,7 +16,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.elite_trading"
+        applicationId = "com.example.elitetrading"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

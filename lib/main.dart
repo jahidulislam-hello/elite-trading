@@ -35,4 +35,5 @@ void main() async {
   ]);
 
   runApp(MyApp(initialRoute: AppRoutes.splash));
+  //Hello we are
 }

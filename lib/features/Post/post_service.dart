@@ -27,19 +27,42 @@ class PostService {
       'limit': limit,
       if (category != null && category != 'All') 'category': category,
     };
-    final response =
-        await _api.get(ApiEndpoints.postsApp, queryParameters: query);
-    _assertSuccess(response.data, 'Failed to load posts.');
-    final data = response.data['data'] as Map<String, dynamic>? ?? {};
-    final rawPosts = data['posts'] as List? ?? [];
-    return PostListResult(
-      access: parseAccessLevel(data['access']),
-      posts: rawPosts
-          .map((e) => PostModel.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      totalPosts: (data['totalPosts'] as num?)?.toInt() ?? 0,
-      pagination: response.data['pagination'] as Map<String, dynamic>?,
-    );
+
+    // A 403 means the user has no active subscription.  We treat this as a
+    // successful response with an empty list and 'limited' access so the UI
+    // can render the upgrade/locked state rather than a generic error.
+    try {
+      final response =
+          await _api.get(ApiEndpoints.postsApp, queryParameters: query);
+      if (response.statusCode == 403) {
+        return PostListResult(
+          access: 'limited',
+          posts: [],
+          totalPosts: 0,
+          pagination: null,
+        );
+      }
+      _assertSuccess(response.data, 'Failed to load posts.');
+      final data = response.data['data'] as Map<String, dynamic>? ?? {};
+      final rawPosts = data['posts'] as List? ?? [];
+      return PostListResult(
+        access: parseAccessLevel(data['access']),
+        posts: rawPosts
+            .map((e) => PostModel.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        totalPosts: (data['totalPosts'] as num?)?.toInt() ?? 0,
+        pagination: response.data['pagination'] as Map<String, dynamic>?,
+      );
+    } on SubscriptionRequiredException {
+      // Backend still responded with 403 (old backend / edge case).
+      // Surface a clean empty-with-limited-access result.
+      return PostListResult(
+        access: 'limited',
+        posts: [],
+        totalPosts: 0,
+        pagination: null,
+      );
+    }
   }
 
   // ──────────────────────────────────────────────────────────────────────────

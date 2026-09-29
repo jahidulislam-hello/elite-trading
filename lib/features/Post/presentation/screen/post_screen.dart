@@ -78,6 +78,7 @@ class PostScreen extends GetView<PostController> {
                   // ── Body ────────────────────────────────────────────
                   Expanded(
                     child: Obx(() {
+                      // Loading
                       if (controller.isPostsLoading.value &&
                           controller.posts.isEmpty) {
                         return const Center(
@@ -85,6 +86,16 @@ class PostScreen extends GetView<PostController> {
                               color: Color(0xFF7B1FE0), strokeWidth: 2),
                         );
                       }
+
+                      // Subscription required — show upgrade prompt
+                      if (controller.accessLevel.value == 'limited') {
+                        return _SubscriptionLockedState(
+                          onSubscribe: () =>
+                              Get.toNamed(AppRoutes.subscripFirstPage),
+                        );
+                      }
+
+                      // Generic error
                       if (controller.postsError.value.isNotEmpty &&
                           controller.posts.isEmpty) {
                         return _PostsError(
@@ -92,20 +103,57 @@ class PostScreen extends GetView<PostController> {
                           onRetry: controller.loadPosts,
                         );
                       }
+
+                      // No posts yet
                       if (controller.posts.isEmpty) {
                         return const _EmptyPostsState();
                       }
+
+                      // Full post list
                       return RefreshIndicator(
-                        onRefresh: () =>
-                            controller.loadPosts(refresh: true),
+                        onRefresh: () => controller.loadPosts(refresh: true),
                         color: const Color(0xFF7B1FE0),
                         backgroundColor: const Color(0xFF1B1830),
-                        child: ListView.builder(
-                          padding:
-                              EdgeInsets.only(top: 16.h, bottom: 90.h),
-                          itemCount: controller.posts.length,
-                          itemBuilder: (context, index) =>
-                              _PostCard(post: controller.posts[index]),
+                        child: NotificationListener<ScrollNotification>(
+                          onNotification: (notification) {
+                            if (notification.metrics.extentAfter < 320 &&
+                                controller.postsError.isEmpty) {
+                              controller.loadPosts(loadMore: true);
+                            }
+                            return false;
+                          },
+                          child: ListView.builder(
+                            padding: EdgeInsets.only(top: 16.h, bottom: 90.h),
+                            itemCount: controller.posts.length +
+                                (controller.isLoadingMorePosts.value ||
+                                        (controller.postsError.isNotEmpty &&
+                                            controller.hasMorePosts)
+                                    ? 1
+                                    : 0),
+                            itemBuilder: (context, index) {
+                              if (index >= controller.posts.length) {
+                                if (!controller.isLoadingMorePosts.value) {
+                                  return Center(
+                                    child: TextButton(
+                                      onPressed: () =>
+                                          controller.loadPosts(loadMore: true),
+                                      child: const Text('Retry loading posts'),
+                                    ),
+                                  );
+                                }
+                                return const Padding(
+                                  padding: EdgeInsets.all(16),
+                                  child: Center(
+                                    child: CircularProgressIndicator(
+                                      color: Color(0xFF7B1FE0),
+                                      strokeWidth: 2,
+                                    ),
+                                  ),
+                                );
+                              }
+                              return _PostCard(post: controller.posts[index]);
+                            },
+                          ),
                         ),
                       );
                     }),
@@ -142,8 +190,7 @@ class _PostCard extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.06),
                 borderRadius: BorderRadius.circular(20.r),
-                border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.14)),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
               ),
               child: Column(
                 children: [
@@ -208,8 +255,7 @@ class _PostCard extends StatelessWidget {
                             if (post.author.isVerified) ...[
                               SizedBox(width: 4.w),
                               Icon(Icons.verified,
-                                  size: 14.sp,
-                                  color: const Color(0xFF7B1FE0)),
+                                  size: 14.sp, color: const Color(0xFF7B1FE0)),
                             ],
                             const Spacer(),
                             Text(
@@ -254,8 +300,7 @@ class _PostCard extends StatelessWidget {
                         Row(
                           children: [
                             GestureDetector(
-                              onTap: () =>
-                                  ctrl.onTogglePostLike(post.id),
+                              onTap: () => ctrl.onTogglePostLike(post.id),
                               child: Row(
                                 children: [
                                   Icon(
@@ -271,8 +316,7 @@ class _PostCard extends StatelessWidget {
                                   Text(
                                     '${post.likes}',
                                     style: GoogleFonts.poppins(
-                                        fontSize: 12.sp,
-                                        color: Colors.white54),
+                                        fontSize: 12.sp, color: Colors.white54),
                                   ),
                                 ],
                               ),
@@ -297,8 +341,7 @@ class _PostCard extends StatelessWidget {
                                   Text(
                                     '${post.sharesCount}', // ← was post.shares
                                     style: GoogleFonts.poppins(
-                                        fontSize: 12.sp,
-                                        color: Colors.white54),
+                                        fontSize: 12.sp, color: Colors.white54),
                                   ),
                                 ],
                               ),
@@ -411,6 +454,133 @@ class _PostsError extends StatelessWidget {
   }
 }
 
+// ── Subscription locked state ─────────────────────────────────────────────
+
+class _SubscriptionLockedState extends StatelessWidget {
+  final VoidCallback onSubscribe;
+  const _SubscriptionLockedState({required this.onSubscribe});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 32.w),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Lock icon with glow
+            Container(
+              width: 80.w,
+              height: 80.w,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF7B1FE0), Color(0xFF4A0FA8)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF7B1FE0).withValues(alpha: 0.5),
+                    blurRadius: 24,
+                    spreadRadius: 4,
+                  ),
+                ],
+              ),
+              child: Icon(Icons.lock_outline_rounded,
+                  size: 36.sp, color: Colors.white),
+            ),
+            SizedBox(height: 24.h),
+
+            Text(
+              'Premium Content',
+              style: GoogleFonts.poppins(
+                fontSize: 20.sp,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ),
+            SizedBox(height: 10.h),
+
+            Text(
+              'Subscribe to access exclusive market insights,\ntrading updates, and expert analysis.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(
+                fontSize: 13.sp,
+                color: Colors.white54,
+                height: 1.5,
+              ),
+            ),
+            SizedBox(height: 28.h),
+
+            // Feature chips
+            Wrap(
+              spacing: 8.w,
+              runSpacing: 8.h,
+              alignment: WrapAlignment.center,
+              children: [
+                _FeatureChip(label: '📊 Market Analysis'),
+                _FeatureChip(label: '💡 Trading Signals'),
+                _FeatureChip(label: '📰 Expert Posts'),
+                _FeatureChip(label: '🔔 Daily Insights'),
+              ],
+            ),
+            SizedBox(height: 32.h),
+
+            // Subscribe button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: onSubscribe,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF7B1FE0),
+                  padding: EdgeInsets.symmetric(vertical: 16.h),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14.r),
+                  ),
+                  elevation: 0,
+                ),
+                child: Text(
+                  'View Subscription Plans',
+                  style: GoogleFonts.poppins(
+                    fontSize: 15.sp,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FeatureChip extends StatelessWidget {
+  final String label;
+  const _FeatureChip({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(20.r),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.poppins(
+          fontSize: 11.sp,
+          color: Colors.white70,
+        ),
+      ),
+    );
+  }
+}
+
 // ── Empty state ───────────────────────────────────────────────────────────
 
 class _EmptyPostsState extends StatelessWidget {
@@ -437,8 +607,7 @@ class _EmptyPostsState extends StatelessWidget {
                     top: 30.h,
                     child: _bubble(70.w, const Color(0xFF433A70))),
                 Positioned(
-                    top: 70.h,
-                    child: _bubble(90.w, const Color(0xFF5C4E99))),
+                    top: 70.h, child: _bubble(90.w, const Color(0xFF5C4E99))),
                 Container(
                   width: 64.w,
                   height: 64.w,
@@ -447,17 +616,12 @@ class _EmptyPostsState extends StatelessWidget {
                     color: Color(0xFF7B1FE0),
                     shape: BoxShape.circle,
                   ),
-                  child:
-                      Icon(Icons.search, size: 28.sp, color: Colors.white),
+                  child: Icon(Icons.search, size: 28.sp, color: Colors.white),
                 ),
-                Positioned(
-                    top: 10.h, left: 40.w, child: _dot(8.w)),
-                Positioned(
-                    top: 0, right: 30.w, child: _dot(6.w)),
-                Positioned(
-                    top: 40.h, right: 0, child: _dot(10.w)),
-                Positioned(
-                    bottom: 10.h, left: 20.w, child: _dot(9.w)),
+                Positioned(top: 10.h, left: 40.w, child: _dot(8.w)),
+                Positioned(top: 0, right: 30.w, child: _dot(6.w)),
+                Positioned(top: 40.h, right: 0, child: _dot(10.w)),
+                Positioned(bottom: 10.h, left: 20.w, child: _dot(9.w)),
               ],
             ),
           ),

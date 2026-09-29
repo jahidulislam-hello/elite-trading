@@ -109,24 +109,21 @@ class HistoryScreen extends GetView<HistoryContainer> {
                                       color: const Color(0xFF2ECC71),
                                     ),
                                     VerticalDivider(
-                                        color: Colors.white38,
-                                        thickness: 0.5),
+                                        color: Colors.white38, thickness: 0.5),
                                     _StatItem(
                                       value: '${controller.losses.value}',
                                       label: 'Losses',
                                       color: const Color(0xFFE0405C),
                                     ),
                                     VerticalDivider(
-                                        color: Colors.white38,
-                                        thickness: 0.5),
+                                        color: Colors.white38, thickness: 0.5),
                                     _StatItem(
                                       value: '${controller.breakeven.value}',
                                       label: 'Breakeven',
                                       color: Colors.white70,
                                     ),
                                     VerticalDivider(
-                                        color: Colors.white38,
-                                        thickness: 0.5),
+                                        color: Colors.white38, thickness: 0.5),
                                     _StatItem(
                                       value:
                                           '${controller.winRate.toStringAsFixed(1)}%',
@@ -258,15 +255,50 @@ class HistoryScreen extends GetView<HistoryContainer> {
                       }
 
                       return RefreshIndicator(
-                        onRefresh: () =>
-                            controller.loadHistory(refresh: true),
+                        onRefresh: () => controller.loadHistory(refresh: true),
                         color: const Color(0xFF7B1FE0),
                         backgroundColor: const Color(0xFF1B1830),
-                        child: ListView.builder(
-                          padding: EdgeInsets.only(bottom: 100.h),
-                          itemCount: list.length,
-                          itemBuilder: (context, index) =>
-                              _HistoryCard(item: list[index]),
+                        child: NotificationListener<ScrollNotification>(
+                          onNotification: (notification) {
+                            if (notification.metrics.extentAfter < 320 &&
+                                controller.error.isEmpty) {
+                              controller.loadHistory(loadMore: true);
+                            }
+                            return false;
+                          },
+                          child: ListView.builder(
+                            padding: EdgeInsets.only(bottom: 100.h),
+                            itemCount: list.length +
+                                (controller.isLoadingMore.value ||
+                                        (controller.error.isNotEmpty &&
+                                            controller.hasMore)
+                                    ? 1
+                                    : 0),
+                            itemBuilder: (context, index) {
+                              if (index >= list.length) {
+                                if (!controller.isLoadingMore.value) {
+                                  return Center(
+                                    child: TextButton(
+                                      onPressed: () => controller.loadHistory(
+                                          loadMore: true),
+                                      child:
+                                          const Text('Retry loading history'),
+                                    ),
+                                  );
+                                }
+                                return const Padding(
+                                  padding: EdgeInsets.all(16),
+                                  child: Center(
+                                    child: CircularProgressIndicator(
+                                      color: Color(0xFF7B1FE0),
+                                      strokeWidth: 2,
+                                    ),
+                                  ),
+                                );
+                              }
+                              return _HistoryCard(item: list[index]);
+                            },
+                          ),
                         ),
                       );
                     }),
@@ -285,8 +317,7 @@ class HistoryScreen extends GetView<HistoryContainer> {
               children: [
                 GestureDetector(
                   onTap: controller.closeFilterPanel,
-                  child: Container(
-                      color: Colors.black.withValues(alpha: 0.3)),
+                  child: Container(color: Colors.black.withValues(alpha: 0.3)),
                 ),
                 Positioned(
                   top: 220.h,
@@ -363,14 +394,11 @@ class _FilterPanel extends StatelessWidget {
             return GestureDetector(
               onTap: () => controller.selectFilter(filter),
               child: Container(
-                margin:
-                    EdgeInsets.symmetric(horizontal: 6.w, vertical: 4.h),
-                padding: EdgeInsets.symmetric(
-                    horizontal: 22.w, vertical: 10.h),
+                margin: EdgeInsets.symmetric(horizontal: 6.w, vertical: 4.h),
+                padding: EdgeInsets.symmetric(horizontal: 22.w, vertical: 10.h),
                 decoration: BoxDecoration(
-                  color: isSelected
-                      ? const Color(0xFF7B1FE0)
-                      : Colors.transparent,
+                  color:
+                      isSelected ? const Color(0xFF7B1FE0) : Colors.transparent,
                   borderRadius: BorderRadius.circular(24.r),
                 ),
                 child: Text(
@@ -471,8 +499,7 @@ class _HistoryCard extends StatelessWidget {
             Row(
               children: [
                 Container(
-                  padding: EdgeInsets.symmetric(
-                      horizontal: 8.w, vertical: 3.h),
+                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
                   decoration: BoxDecoration(
                     color: (isBuy
                             ? const Color(0xFF2ECC71)
@@ -544,8 +571,8 @@ class _HistoryCard extends StatelessWidget {
                       SizedBox(width: 8.w),
                     ],
                     Container(
-                      padding: EdgeInsets.symmetric(
-                          horizontal: 8.w, vertical: 3.h),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
                       decoration: BoxDecoration(
                         color: resultColor.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(6.r),
@@ -682,8 +709,8 @@ class _ErrorState extends StatelessWidget {
             Text(
               message,
               textAlign: TextAlign.center,
-              style: GoogleFonts.poppins(
-                  fontSize: 13.sp, color: Colors.white54),
+              style:
+                  GoogleFonts.poppins(fontSize: 13.sp, color: Colors.white54),
             ),
             SizedBox(height: 14.h),
             TextButton(

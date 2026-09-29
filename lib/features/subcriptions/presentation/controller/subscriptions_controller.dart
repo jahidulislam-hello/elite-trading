@@ -36,7 +36,8 @@ class SubscriptionsController extends GetxController {
   // ─── Trial status ────────────────────────────────────────────────────────
   final Rx<TrialStatusModel?> trialStatus = Rx<TrialStatusModel?>(null);
   final Rx<TrialConfigModel?> trialConfig = Rx<TrialConfigModel?>(null);
-  final RxBool isTrialEligible = true.obs;
+  final RxBool isTrialEligible = false.obs;
+  final RxString trialStatusError = ''.obs;
 
   // ─── Comparison table (derived from the subscription API) ────────────────
 
@@ -54,9 +55,7 @@ class SubscriptionsController extends GetxController {
     ) =>
         PlanComparisonRow(
           label,
-          list
-              .map((p) => PlanComparisonCell(included: hasFlag(p)))
-              .toList(),
+          list.map((p) => PlanComparisonCell(included: hasFlag(p))).toList(),
         );
 
     void addFlagRow(
@@ -127,9 +126,8 @@ class SubscriptionsController extends GetxController {
     return seen.values.toList();
   }
 
-  String _capitalize(String value) => value.isEmpty
-      ? value
-      : '${value[0].toUpperCase()}${value.substring(1)}';
+  String _capitalize(String value) =>
+      value.isEmpty ? value : '${value[0].toUpperCase()}${value.substring(1)}';
 
   void selectPlan(String id) {
     selectedPlanId.value = id;
@@ -148,28 +146,13 @@ class SubscriptionsController extends GetxController {
     isPlansLoading.value = true;
     plansError.value = '';
     try {
-      final results = await Future.wait([
-        _service.getPlans(),
-        _service.getTrialStatus().catchError((_) => TrialStatusModel(
-              hasUsedFreeTrial: false,
-              canStartFreeTrial: true,
-            )),
-        _loadTrialConfigOrNull(),
-      ]);
-
-      final fetchedPlans = results[0] as List<SubscriptionPlan>;
-      final fetchedTrial = results[1] as TrialStatusModel;
-      final fetchedConfig = results[2] as TrialConfigModel?;
-
+      final fetchedPlans = await _service.getPlans();
       plans.value = fetchedPlans;
-      trialStatus.value = fetchedTrial;
-      if (fetchedConfig != null) trialConfig.value = fetchedConfig;
-      isTrialEligible.value = fetchedTrial.canStartFreeTrial;
 
       // Auto-select the first plan (or VIP if present)
       if (fetchedPlans.isNotEmpty) {
-        final vip = fetchedPlans.firstWhereOrNull(
-            (p) => p.name.toLowerCase() == 'vip');
+        final vip =
+            fetchedPlans.firstWhereOrNull((p) => p.name.toLowerCase() == 'vip');
         final first = vip ?? fetchedPlans.first;
         selectedPlanId.value = first.id;
         _selectedPlan.value = first;
@@ -181,6 +164,8 @@ class SubscriptionsController extends GetxController {
     } finally {
       isPlansLoading.value = false;
     }
+
+    await refreshTrialStatus();
   }
 
   void onContinuePressed() {
@@ -206,20 +191,27 @@ class SubscriptionsController extends GetxController {
 
   /// Reason the trial button is unavailable, straight from the backend
   /// eligibility check (already used trial, active paid plan, trial disabled).
-  String get trialUnavailableReason =>
-      trialStatus.value?.reason ??
-      'Free trial is not available for this account.';
+  String get trialUnavailableReason => trialStatusError.value.isNotEmpty
+      ? trialStatusError.value
+      : trialStatus.value?.reason ??
+          'Free trial is not available for this account.';
 
   Future<void> refreshTrialStatus() async {
     isTrialStatusLoading.value = true;
+    trialStatusError.value = '';
+    isTrialEligible.value = false;
     try {
       final status = await _service.getTrialStatus();
       trialStatus.value = status;
       isTrialEligible.value = status.canStartFreeTrial;
       final config = await _loadTrialConfigOrNull();
       if (config != null) trialConfig.value = config;
+    } on AppException catch (e, s) {
+      debugPrint('refreshTrialStatus failed: $e\n$s');
+      trialStatusError.value = e.message;
     } catch (e, s) {
       debugPrint('refreshTrialStatus failed: $e\n$s');
+      trialStatusError.value = 'Unable to verify free-trial eligibility.';
     } finally {
       isTrialStatusLoading.value = false;
     }
@@ -435,8 +427,18 @@ class SubscriptionsController extends GetxController {
 
   String _formatDate(DateTime d) {
     const months = [
-      'Jan','Feb','Mar','Apr','May','Jun',
-      'Jul','Aug','Sep','Oct','Nov','Dec'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
     ];
     return '${months[d.month - 1]} ${d.day}, ${d.year}';
   }
@@ -473,14 +475,21 @@ class SubscriptionsController extends GetxController {
         couponCode: isFreeTrial ? null : appliedCoupon.value?.code,
       );
 
-      if (result.paymentRequired && result.checkoutUrl != null) {
+      if (result.paymentRequired) {
+        if (result.checkoutUrl == null ||
+            result.checkoutUrl!.isEmpty ||
+            result.purchase.id.isEmpty) {
+          throw ServerException(
+            'The payment service returned an incomplete checkout response.',
+            null,
+          );
+        }
         // ── Paid plan → open Stripe checkout in-app ──────────────────────
         isPurchaseLoading.value = false;
         Get.to(
           () => StripeWebViewScreen(
             checkoutUrl: result.checkoutUrl!,
-            onSuccess: () =>
-                _goHomeAfterPurchase('Payment successful! Subscription activated.'),
+            onSuccess: () => _handlePaidCheckoutSuccess(result.purchase.id),
             // The checkout screen pops itself; step back to the plan list so
             // another plan can be picked.
             onCancel: _returnToPlanList,
@@ -488,6 +497,13 @@ class SubscriptionsController extends GetxController {
           transition: Transition.upToDown,
         );
       } else {
+        if (!result.purchase.isActive ||
+            result.purchase.paymentStatus != 'completed') {
+          throw ServerException(
+            'The server did not confirm subscription activation.',
+            null,
+          );
+        }
         // ── Free trial or 100% coupon → already activated ────────────────
         // The backend echoes the granted length; fall back to the configured
         // offer, and to a length-free message when neither is known.
@@ -510,6 +526,37 @@ class SubscriptionsController extends GetxController {
     }
   }
 
+  Future<void> _handlePaidCheckoutSuccess(String purchaseId) async {
+    var isActivated = false;
+    if (purchaseId.isNotEmpty) {
+      for (var attempt = 0; attempt < 10; attempt++) {
+        try {
+          final current = await _service.getCurrentSubscription();
+          if (current != null &&
+              current.id == purchaseId &&
+              current.isActive &&
+              current.paymentStatus == 'completed') {
+            isActivated = true;
+            break;
+          }
+        } on AppException catch (e, s) {
+          debugPrint('Subscription activation check failed: $e\n$s');
+        }
+
+        if (attempt < 9) {
+          await Future.delayed(const Duration(seconds: 1));
+        }
+      }
+    }
+
+    _goHomeAfterPurchase(
+      isActivated
+          ? 'Payment successful! Subscription activated.'
+          : 'Payment received. Subscription activation is still processing; '
+              'your content will appear as soon as it is ready.',
+    );
+  }
+
   /// Sends the user back to the plan list after an abandoned checkout.
   ///
   /// The predicate also stops at the first route, so this can never empty the
@@ -523,22 +570,30 @@ class SubscriptionsController extends GetxController {
 
   /// Returns to the home tabs after a completed purchase.
   ///
-  /// Snackbars are GetX routes, so any open one has to be closed *before*
-  /// offAllNamed — otherwise its barrier survives the stack replacement and
-  /// silently absorbs every tap on the nav bar.
+  /// Returns to the existing shell when the subscription flow was opened from
+  /// it; otherwise creates a fresh shell after onboarding.
   void _goHomeAfterPurchase(String message) {
     if (Get.isSnackbarOpen) Get.closeAllSnackbars();
-    refreshTrialStatus();
-    Get.offAllNamed(AppRoutes.bottomNavScreen);
 
+    final hasActiveShell = Get.isRegistered<BottomNavController>() &&
+        !Get.isPrepared<BottomNavController>();
+    if (hasActiveShell) {
+      Get.until((route) => route.settings.name == AppRoutes.bottomNavScreen);
+    } else {
+      Get.offAllNamed(AppRoutes.bottomNavScreen);
+    }
+
+    // Wait for the route transition before refreshing the existing or newly
+    // bound tab controllers.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Access level just changed, so every tab needs fresh data.
-      if (Get.isRegistered<BottomNavController>()) {
-        final nav = Get.find<BottomNavController>();
-        nav.selectedIndex.value = 0;
-        nav.refreshAllTabs();
-      }
-      _showSuccess(message);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (Get.isRegistered<BottomNavController>()) {
+          final nav = Get.find<BottomNavController>();
+          nav.selectedIndex.value = 0;
+          nav.refreshAllTabs();
+        }
+        _showSuccess(message);
+      });
     });
   }
 

@@ -63,8 +63,8 @@ class AllSingnalScreen extends GetView<SignalController> {
                           padding: EdgeInsets.symmetric(
                               horizontal: 10.w, vertical: 4.h),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF7B1FE0)
-                                .withValues(alpha: 0.2),
+                            color:
+                                const Color(0xFF7B1FE0).withValues(alpha: 0.2),
                             shape: BoxShape.circle,
                             border: Border.all(
                                 color: const Color(0xFF7B1FE0), width: 0.5),
@@ -118,11 +118,9 @@ class AllSingnalScreen extends GetView<SignalController> {
                           final isSelected =
                               controller.selectedCategory.value == category;
                           return GestureDetector(
-                            onTap: () =>
-                                controller.selectCategory(category),
+                            onTap: () => controller.selectCategory(category),
                             child: Container(
-                              padding:
-                                  EdgeInsets.symmetric(horizontal: 20.w),
+                              padding: EdgeInsets.symmetric(horizontal: 20.w),
                               alignment: Alignment.center,
                               decoration: BoxDecoration(
                                 color: isSelected
@@ -212,15 +210,51 @@ class AllSingnalScreen extends GetView<SignalController> {
                       }
 
                       return RefreshIndicator(
-                        onRefresh: () =>
-                            controller.loadSignals(refresh: true),
+                        onRefresh: () => controller.loadSignals(refresh: true),
                         color: const Color(0xFF7B1FE0),
                         backgroundColor: const Color(0xFF1B1830),
-                        child: ListView.builder(
-                          padding: EdgeInsets.only(bottom: 20.h),
-                          itemCount: list.length,
-                          itemBuilder: (context, index) =>
-                              SignalCard(signal: list[index]),
+                        child: NotificationListener<ScrollNotification>(
+                          onNotification: (notification) {
+                            if (notification.metrics.extentAfter < 320 &&
+                                controller.signalsError.isEmpty) {
+                              controller.loadSignals(loadMore: true);
+                            }
+                            return false;
+                          },
+                          child: ListView.builder(
+                            padding: EdgeInsets.only(bottom: 20.h),
+                            itemCount: list.length +
+                                (controller.isLoadingMoreSignals.value ||
+                                        (controller.signalsError.isNotEmpty &&
+                                            controller.hasMoreSignals)
+                                    ? 1
+                                    : 0),
+                            itemBuilder: (context, index) {
+                              if (index >= list.length) {
+                                if (!controller.isLoadingMoreSignals.value) {
+                                  return Center(
+                                    child: TextButton(
+                                      onPressed: () => controller.loadSignals(
+                                        loadMore: true,
+                                      ),
+                                      child:
+                                          const Text('Retry loading signals'),
+                                    ),
+                                  );
+                                }
+                                return const Padding(
+                                  padding: EdgeInsets.all(16),
+                                  child: Center(
+                                    child: CircularProgressIndicator(
+                                      color: Color(0xFF7B1FE0),
+                                      strokeWidth: 2,
+                                    ),
+                                  ),
+                                );
+                              }
+                              return SignalCard(signal: list[index]);
+                            },
+                          ),
                         ),
                       );
                     }),

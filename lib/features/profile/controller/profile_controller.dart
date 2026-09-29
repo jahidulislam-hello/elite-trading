@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:elite_trading/core/exceptions/app_exceptions.dart';
+import 'package:elite_trading/core/utils/media_url.dart';
 import 'package:elite_trading/core/routes/app_routes.dart';
 import 'package:elite_trading/core/services/storage_service.dart';
 import 'package:elite_trading/features/authentication/auth_service.dart';
@@ -116,8 +117,7 @@ class ProfileController extends GetxController {
     userEmail.value = user.email;
 
     final avatar = user.image?.publicFileURL;
-    networkAvatarUrl.value =
-        (avatar != null && avatar.isNotEmpty) ? avatar : '';
+    networkAvatarUrl.value = resolveMediaUrl(avatar);
 
     final status = user.subscriptionStatus.toLowerCase();
     final hasAccess = status == 'active' || status == 'trial';

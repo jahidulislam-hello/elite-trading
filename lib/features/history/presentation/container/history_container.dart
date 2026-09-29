@@ -26,8 +26,12 @@ class HistoryContainer extends GetxController {
   // ─── History signals ──────────────────────────────────────────────────────
   final RxList<SignalHistoryModel> signals = <SignalHistoryModel>[].obs;
   final RxBool isLoading = false.obs;
+  final RxBool isLoadingMore = false.obs;
   final RxString error = ''.obs;
   final RxString accessLevel = 'full'.obs;
+  int _currentPage = 1;
+  int _totalPages = 1;
+  int _requestId = 0;
 
   // ─── Search + filter ──────────────────────────────────────────────────────
   final TextEditingController searchController = TextEditingController();
@@ -39,6 +43,7 @@ class HistoryContainer extends GetxController {
 
   /// The API already applies the result filter and search term.
   List<SignalHistoryModel> get filteredSignals => signals.toList();
+  bool get hasMore => _currentPage < _totalPages;
 
   void onSearchChanged(String value) {
     searchQuery.value = value;
@@ -67,20 +72,50 @@ class HistoryContainer extends GetxController {
   }
 
   // ─── Data loading ─────────────────────────────────────────────────────────
-  Future<void> loadHistory({bool refresh = false}) async {
-    if (refresh) signals.clear();
-    isLoading.value = true;
+  Future<void> loadHistory({
+    bool refresh = false,
+    bool loadMore = false,
+  }) async {
+    if (loadMore &&
+        (isLoading.value ||
+            isLoadingMore.value ||
+            _currentPage >= _totalPages)) {
+      return;
+    }
+
+    if (refresh) {
+      _currentPage = 0;
+      _totalPages = 1;
+      signals.clear();
+      isLoadingMore.value = false;
+    }
+
+    final requestedPage = loadMore ? _currentPage + 1 : 1;
+    final requestId = ++_requestId;
+    if (loadMore) {
+      isLoadingMore.value = true;
+    } else {
+      isLoading.value = true;
+    }
     error.value = '';
     try {
       final result = await _service.getSignalHistory(
+        page: requestedPage,
         result: selectedFilter.value,
-        searchTerm: searchQuery.value.trim().isEmpty
-            ? null
-            : searchQuery.value.trim(),
+        searchTerm:
+            searchQuery.value.trim().isEmpty ? null : searchQuery.value.trim(),
       );
-      signals.value = result.signals;
+      if (requestId != _requestId) return;
+
+      if (loadMore) {
+        signals.addAll(result.signals);
+      } else {
+        signals.value = result.signals;
+      }
       totalClosed.value = result.totalClosedSignals;
       accessLevel.value = result.access;
+      _currentPage = requestedPage;
+      _totalPages = _totalPagesFrom(result.pagination, requestedPage);
 
       // Apply performance overview from backend
       final overview = result.performanceOverview;
@@ -95,15 +130,27 @@ class HistoryContainer extends GetxController {
         breakeven.value = signals.where((s) => s.isBreakeven).length;
       }
     } on AppException catch (e) {
+      if (requestId != _requestId) return;
       error.value = e.message;
       _showError(e.message);
     } catch (e, s) {
+      if (requestId != _requestId) return;
       debugPrint('loadHistory failed: $e\n$s');
       error.value = 'Failed to load history. Please try again.';
       _showError(error.value);
     } finally {
-      isLoading.value = false;
+      if (requestId == _requestId) {
+        isLoading.value = false;
+        isLoadingMore.value = false;
+      }
     }
+  }
+
+  int _totalPagesFrom(Map<String, dynamic>? pagination, int fallbackPage) {
+    final value = pagination?['totalPage'];
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? fallbackPage;
+    return fallbackPage;
   }
 
   // ─── Snackbar helper ──────────────────────────────────────────────────────

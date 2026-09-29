@@ -24,14 +24,23 @@ class SignalController extends GetxController {
   // ─── Signal feed ──────────────────────────────────────────────────────────
   final RxList<SignalModel> signals = <SignalModel>[].obs;
   final RxBool isSignalsLoading = false.obs;
+  final RxBool isLoadingMoreSignals = false.obs;
   final RxString signalsError = ''.obs;
   final RxString accessLevel = 'full'.obs; // 'full' | 'limited' | etc.
+  int _currentSignalsPage = 1;
+  int _totalSignalsPages = 1;
+  int _signalsRequestId = 0;
 
   // ─── Search & category filter (server-side via API) ───────────────────────
   final TextEditingController searchController = TextEditingController();
   final RxString selectedCategory = 'All'.obs;
-  final List<String> categories =
-      const ['All', 'Forex', 'Crypto', 'Commodity', 'Index'];
+  final List<String> categories = const [
+    'All',
+    'Forex',
+    'Crypto',
+    'Commodity',
+    'Index'
+  ];
   final RxString searchQuery = ''.obs;
   Timer? _searchDebounce;
 
@@ -53,6 +62,7 @@ class SignalController extends GetxController {
   }
 
   int get totalSignals => signals.length;
+  bool get hasMoreSignals => _currentSignalsPage < _totalSignalsPages;
 
   // ─── Signal detail ────────────────────────────────────────────────────────
   final Rx<SignalDetailModel?> currentSignalDetail =
@@ -96,27 +106,69 @@ class SignalController extends GetxController {
     }
   }
 
-  Future<void> loadSignals({bool refresh = false}) async {
-    if (refresh) signals.clear();
-    isSignalsLoading.value = true;
+  Future<void> loadSignals({
+    bool refresh = false,
+    bool loadMore = false,
+  }) async {
+    if (loadMore &&
+        (isSignalsLoading.value ||
+            isLoadingMoreSignals.value ||
+            _currentSignalsPage >= _totalSignalsPages)) {
+      return;
+    }
+
+    if (refresh) {
+      _currentSignalsPage = 0;
+      _totalSignalsPages = 1;
+      signals.clear();
+      isLoadingMoreSignals.value = false;
+    }
+
+    final requestedPage = loadMore ? _currentSignalsPage + 1 : 1;
+    final requestId = ++_signalsRequestId;
+    if (loadMore) {
+      isLoadingMoreSignals.value = true;
+    } else {
+      isSignalsLoading.value = true;
+    }
     signalsError.value = '';
     try {
       final result = await _service.getSignals(
+        page: requestedPage,
         category: selectedCategory.value,
-        searchTerm: searchQuery.value.trim().isEmpty
-            ? null
-            : searchQuery.value.trim(),
+        searchTerm:
+            searchQuery.value.trim().isEmpty ? null : searchQuery.value.trim(),
       );
-      signals.value = result.signals;
+      if (requestId != _signalsRequestId) return;
+
+      if (loadMore) {
+        signals.addAll(result.signals);
+      } else {
+        signals.value = result.signals;
+      }
       accessLevel.value = result.access;
+      _currentSignalsPage = requestedPage;
+      _totalSignalsPages = _totalPagesFrom(result.pagination, requestedPage);
     } on AppException catch (e) {
+      if (requestId != _signalsRequestId) return;
       signalsError.value = e.message;
     } catch (e, s) {
+      if (requestId != _signalsRequestId) return;
       debugPrint('loadSignals failed: $e\n$s');
       signalsError.value = 'Failed to load signals. Please try again.';
     } finally {
-      isSignalsLoading.value = false;
+      if (requestId == _signalsRequestId) {
+        isSignalsLoading.value = false;
+        isLoadingMoreSignals.value = false;
+      }
     }
+  }
+
+  int _totalPagesFrom(Map<String, dynamic>? pagination, int fallbackPage) {
+    final value = pagination?['totalPage'];
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? fallbackPage;
+    return fallbackPage;
   }
 
   void onSeeAllSignalsPressed() => Get.to(() => const AllSingnalScreen());
@@ -175,16 +227,16 @@ class SignalController extends GetxController {
       if (chartData.value!.candles.isNotEmpty) return;
     }
     selectedTimeframe.value = tf;
-    final id = currentSignalListItem.value?.id ??
-        currentSignalDetail.value?.header.id;
+    final id =
+        currentSignalListItem.value?.id ?? currentSignalDetail.value?.header.id;
     if (id != null) loadChart(id, timeframe: tf);
   }
 
   void selectDetailTab(int index) => selectedTabIndex.value = index;
 
   Future<void> toggleFavorite() async {
-    final id = currentSignalListItem.value?.id ??
-        currentSignalDetail.value?.header.id;
+    final id =
+        currentSignalListItem.value?.id ?? currentSignalDetail.value?.header.id;
     if (id == null) return;
     final newValue = !isFavorite.value;
     isFavorite.value = newValue;
@@ -197,8 +249,8 @@ class SignalController extends GetxController {
   }
 
   Future<void> onEnableAlertsPressed() async {
-    final id = currentSignalListItem.value?.id ??
-        currentSignalDetail.value?.header.id;
+    final id =
+        currentSignalListItem.value?.id ?? currentSignalDetail.value?.header.id;
     final detail = currentSignalDetail.value;
     if (id == null) return;
     if (detail != null && !detail.userActions.canEnableAlerts) {

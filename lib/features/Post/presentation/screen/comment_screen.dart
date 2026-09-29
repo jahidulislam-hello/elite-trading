@@ -45,7 +45,8 @@ class CommentScreen extends GetView<PostController> {
                                 color: Color(0xFF73737380),
                                 shape: BoxShape.circle,
                               ),
-                              child: Icon(Icons.arrow_back, color: Colors.white, size: 18.sp),
+                              child: Icon(Icons.arrow_back,
+                                  color: Colors.white, size: 18.sp),
                             ),
                           ),
                           SizedBox(width: 14.w),
@@ -60,7 +61,7 @@ class CommentScreen extends GetView<PostController> {
                         ],
                       ),
                       Obx(
-                            () => Container(
+                        () => Container(
                           width: 30.w,
                           height: 30.w,
                           alignment: Alignment.center,
@@ -96,7 +97,8 @@ class CommentScreen extends GetView<PostController> {
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.06),
                             borderRadius: BorderRadius.circular(18.r),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+                            border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.14)),
                           ),
                           child: Column(
                             children: [
@@ -129,7 +131,6 @@ class CommentScreen extends GetView<PostController> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-
                                     SizedBox(height: 10.h),
                                     Text(
                                       post.title,
@@ -213,11 +214,55 @@ class CommentScreen extends GetView<PostController> {
                         ),
                       );
                     }
-                    return ListView.builder(
-                      padding: EdgeInsets.symmetric(horizontal: 20.w),
-                      itemCount: controller.comments.length,
-                      itemBuilder: (context, index) =>
-                          _CommentTile(comment: controller.comments[index]),
+                    return NotificationListener<ScrollNotification>(
+                      onNotification: (notification) {
+                        if (notification.metrics.extentAfter < 240 &&
+                            controller.commentsError.isEmpty) {
+                          final postId = controller.selectedPost.value?.id;
+                          if (postId != null) {
+                            controller.loadMoreComments(postId);
+                          }
+                        }
+                        return false;
+                      },
+                      child: ListView.builder(
+                        padding: EdgeInsets.symmetric(horizontal: 20.w),
+                        itemCount: controller.comments.length +
+                            (controller.isLoadingMoreComments.value ||
+                                    (controller.commentsError.isNotEmpty &&
+                                        controller.hasMoreComments)
+                                ? 1
+                                : 0),
+                        itemBuilder: (context, index) {
+                          if (index >= controller.comments.length) {
+                            if (!controller.isLoadingMoreComments.value) {
+                              return Center(
+                                child: TextButton(
+                                  onPressed: () {
+                                    final postId =
+                                        controller.selectedPost.value?.id;
+                                    if (postId != null) {
+                                      controller.loadMoreComments(postId);
+                                    }
+                                  },
+                                  child: const Text('Retry loading comments'),
+                                ),
+                              );
+                            }
+                            return const Padding(
+                              padding: EdgeInsets.all(16),
+                              child: Center(
+                                child: CircularProgressIndicator(
+                                  color: Color(0xFF7B1FE0),
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                            );
+                          }
+                          return _CommentTile(
+                              comment: controller.comments[index]);
+                        },
+                      ),
                     );
                   }),
                 ),
@@ -253,7 +298,8 @@ class CommentScreen extends GetView<PostController> {
                                     ),
                                     border: InputBorder.none,
                                     isDense: true,
-                                    contentPadding: EdgeInsets.symmetric(vertical: 14.h),
+                                    contentPadding:
+                                        EdgeInsets.symmetric(vertical: 14.h),
                                   ),
                                 ),
                               ),

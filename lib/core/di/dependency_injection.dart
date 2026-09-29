@@ -17,7 +17,11 @@ class DependencyInjection {
   DependencyInjection._();
 
   static Future<void> init() async {
-    Get.lazyPut<CacheService>(() => CacheService(), fenix: true);
+    // CacheService (Hive) must be initialized eagerly — Hive.initFlutter() is async
+    final cacheService = CacheService();
+    await cacheService.init();
+    Get.put<CacheService>(cacheService, permanent: true);
+
     Get.lazyPut<ConnectivityService>(() => ConnectivityService(), fenix: true);
 
     // StorageService must be ready before AuthController
@@ -37,13 +41,9 @@ class DependencyInjection {
     //---------------------Subscription----------------------------
     Get.lazyPut<SubscriptionsController>(() => SubscriptionsController(), fenix: true);
 
-    //---------------------Signal----------------------------
-    Get.lazyPut<SignalController>(() => SignalController(), fenix: true);
-    Get.lazyPut<NotificationController>(() => NotificationController(), fenix: true);
-    Get.lazyPut<PostController>(() => PostController(), fenix: true);
-    Get.lazyPut<HistoryContainer>(() => HistoryContainer(), fenix: true);
-    Get.lazyPut<ProfileController>(() => ProfileController(), fenix: true);
-    Get.lazyPut<BottomNavController>(() => BottomNavController(), fenix: true);
+    // BottomNavBinding owns these session-scoped controllers and registers
+    // them permanently. Registering lazy factories here first makes the
+    // binding mistake those factories for live instances.
   }
 
   static void clear() {

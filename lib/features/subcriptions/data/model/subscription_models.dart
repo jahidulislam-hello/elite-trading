@@ -51,7 +51,7 @@ class SubscriptionPlan {
 
   factory SubscriptionPlan.fromJson(Map<String, dynamic> json) {
     return SubscriptionPlan(
-      id: json['_id']?.toString() ?? json['id']?.toString() ?? '',
+      id: json['_id']?.toString() ?? '',
       name: json['name'] as String? ?? '',
       description: json['description'] as String? ?? '',
       price: (json['price'] as num?)?.toDouble() ?? 0.0,
@@ -126,21 +126,10 @@ class PurchaseModel {
   });
 
   factory PurchaseModel.fromJson(Map<String, dynamic> json) {
-    final rawSubscriptionId = json['subscriptionId'];
-    final subscriptionId = rawSubscriptionId is Map
-        ? (rawSubscriptionId['_id'] ?? rawSubscriptionId['id'])?.toString() ??
-            ''
-        : rawSubscriptionId?.toString() ?? '';
-
-    final rawUser = json['userId'] ?? json['user'];
-    final userId = rawUser is Map
-        ? (rawUser['_id'] ?? rawUser['id'])?.toString() ?? ''
-        : rawUser?.toString() ?? '';
-
     return PurchaseModel(
-      id: (json['_id'] ?? json['id'])?.toString() ?? '',
-      userId: userId,
-      subscriptionId: subscriptionId,
+      id: json['_id']?.toString() ?? '',
+      userId: json['userId']?.toString() ?? '',
+      subscriptionId: json['subscriptionId']?.toString() ?? '',
       subscriptionName: json['subscriptionName'] as String? ?? '',
       startDate: DateTime.tryParse(json['startDate']?.toString() ?? '') ??
           DateTime.now(),
@@ -184,14 +173,22 @@ class PurchaseResult {
 
   factory PurchaseResult.fromJson(Map<String, dynamic> json) {
     final purchaseJson = json['purchase'] as Map<String, dynamic>?;
-    if (purchaseJson == null) {
-      throw const FormatException(
-        'Purchase response is missing the purchase record.',
-      );
-    }
-
     return PurchaseResult(
-      purchase: PurchaseModel.fromJson(purchaseJson),
+      purchase: purchaseJson != null
+          ? PurchaseModel.fromJson(purchaseJson)
+          : PurchaseModel(
+              id: '',
+              userId: '',
+              subscriptionId: '',
+              subscriptionName: '',
+              startDate: DateTime.now(),
+              endDate: DateTime.now(),
+              isFreeTrial: false,
+              paymentStatus: 'pending',
+              amount: 0,
+              billingCycle: 'monthly',
+              isActive: false,
+            ),
       checkoutUrl: json['checkoutUrl'] as String?,
       sessionId: json['sessionId'] as String?,
       finalAmount: (json['finalAmount'] as num?)?.toDouble() ?? 0.0,
@@ -242,8 +239,9 @@ class TrialStatusModel {
     return TrialStatusModel(
       hasUsedFreeTrial: json['hasUsedFreeTrial'] as bool? ?? false,
       isTrialActive: json['isTrialActive'] as bool?,
-      trialEndDate: DateTime.tryParse(json['trialEndDate']?.toString() ?? ''),
-      canStartFreeTrial: json['canStartFreeTrial'] as bool? ?? false,
+      trialEndDate:
+          DateTime.tryParse(json['trialEndDate']?.toString() ?? ''),
+      canStartFreeTrial: json['canStartFreeTrial'] as bool? ?? true,
       reason: json['reason'] as String?,
       verificationOrder: (json['verificationOrder'] as num?)?.toInt() ?? 0,
       promoLimit: (json['promoLimit'] as num?)?.toInt() ?? 0,
@@ -386,7 +384,6 @@ class CouponModel {
 
   double discountAmount(double price) => price - discountedPrice(price);
 
-  String get discountLabel => isPercentage
-      ? '${discount.toStringAsFixed(0)}% off'
-      : '\$${discount.toStringAsFixed(2)} off';
+  String get discountLabel =>
+      isPercentage ? '${discount.toStringAsFixed(0)}% off' : '\$${discount.toStringAsFixed(2)} off';
 }

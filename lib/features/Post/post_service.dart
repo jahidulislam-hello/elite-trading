@@ -27,78 +27,19 @@ class PostService {
       'limit': limit,
       if (category != null && category != 'All') 'category': category,
     };
-
-    // A 403 means the user has no active subscription.  We treat this as a
-    // successful response with an empty list and 'limited' access so the UI
-    // can render the upgrade/locked state rather than a generic error.
-    try {
-      final response =
-          await _api.get(ApiEndpoints.postsApp, queryParameters: query);
-      if (response.statusCode == 403) {
-        return const PostListResult(
-          access: 'limited',
-          posts: [],
-          totalPosts: 0,
-          pagination: null,
-        );
-      }
-      _assertSuccess(response.data, 'Failed to load posts.');
-
-      final dynamic dataRaw = response.data['data'];
-      List rawPosts = [];
-      dynamic rawAccess;
-      int totalPosts = 0;
-
-      if (dataRaw is List) {
-        rawPosts = dataRaw;
-        totalPosts = rawPosts.length;
-      } else if (dataRaw is Map) {
-        final mapData = Map<String, dynamic>.from(dataRaw);
-        rawAccess = mapData['access'];
-        final postsCandidate =
-            mapData['posts'] ?? mapData['data'] ?? mapData['items'];
-        if (postsCandidate is List) {
-          rawPosts = postsCandidate;
-        }
-        totalPosts =
-            (mapData['totalPosts'] as num?)?.toInt() ?? rawPosts.length;
-      }
-
-      final posts = <PostModel>[];
-      for (final item in rawPosts) {
-        if (item is Map) {
-          posts.add(
-            PostModel.fromJson(Map<String, dynamic>.from(item)),
-          );
-        }
-      }
-
-      return PostListResult(
-        access: parseAccessLevel(rawAccess),
-        posts: posts,
-        totalPosts: totalPosts,
-        pagination: response.data['pagination'] is Map
-            ? Map<String, dynamic>.from(response.data['pagination'] as Map)
-            : null,
-      );
-    } on SubscriptionRequiredException {
-      return const PostListResult(
-        access: 'limited',
-        posts: [],
-        totalPosts: 0,
-        pagination: null,
-      );
-    } on ServerException catch (e) {
-      if (e.statusCode == 403) {
-        return const PostListResult(
-          access: 'limited',
-          posts: [],
-          totalPosts: 0,
-          pagination: null,
-        );
-      }
-      rethrow;
-    }
+    final response =
+        await _api.get(ApiEndpoints.postsApp, queryParameters: query);
+    _assertSuccess(response.data, 'Failed to load posts.');
+    final data = response.data['data'] as Map<String, dynamic>? ?? {};
+    final rawPosts = data['posts'] as List? ?? [];
+    return PostListResult(
+      access: parseAccessLevel(data['access']),
+      posts: rawPosts
+          .map((e) => PostModel.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      totalPosts: (data['totalPosts'] as num?)?.toInt() ?? 0,
+      pagination: response.data['pagination'] as Map<String, dynamic>?,
+    );
   }
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -231,25 +172,6 @@ class PostService {
   void _assertSuccess(dynamic responseData, String fallback) {
     if (responseData is Map<String, dynamic>) {
       if (responseData['success'] == false) {
-        final sources = responseData['errorSources'] ??
-            responseData['errorSoures'] ??
-            responseData['errorMessages'];
-        if (sources is List && sources.isNotEmpty) {
-          final messages = <String>[];
-          for (final item in sources) {
-            if (item is Map<String, dynamic>) {
-              final msg = item['message'];
-              if (msg is String && msg.trim().isNotEmpty) {
-                messages.add(msg.trim());
-              }
-            } else if (item is String && item.trim().isNotEmpty) {
-              messages.add(item.trim());
-            }
-          }
-          if (messages.isNotEmpty) {
-            throw ServerException(messages.join('. '), null);
-          }
-        }
         final msg = responseData['message'] as String?;
         throw ServerException(
             msg?.isNotEmpty == true ? msg! : fallback, null);

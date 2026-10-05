@@ -1,5 +1,3 @@
-import '../../../../core/utils/media_url.dart';
-
 /// Post models matching the backend formatter output from:
 ///   backend/src/modules/basic_modules/post/post.formatter.ts
 ///   backend/src/modules/basic_modules/post/post.interface.ts
@@ -65,68 +63,42 @@ class PostModel {
   }
 
   factory PostModel.fromJson(Map<String, dynamic> json) {
-    final imageRaw = json['coverImage'] ?? json['img'] ?? json['image'];
-    final imageStr = imageRaw?.toString();
-
-    final pubRaw = json['publishedAt'] ?? json['pub'];
-    DateTime? publishedAt;
-    if (pubRaw is String) {
-      publishedAt = DateTime.tryParse(pubRaw);
-    } else if (pubRaw is int) {
-      publishedAt = DateTime.fromMillisecondsSinceEpoch(pubRaw);
-    }
-
-    final cat = json['category']?.toString() ??
-        json['categoryLabel']?.toString() ??
-        json['cat']?.toString() ??
-        '';
-
     return PostModel(
       id: json['_id']?.toString() ?? json['id']?.toString() ?? '',
-      title: json['title']?.toString() ?? '',
-      body: json['body']?.toString() ?? json['excerpt']?.toString() ?? '',
-      category: cat,
-      coverImage: (imageStr != null && imageStr.isNotEmpty)
-          ? resolveMediaUrl(imageStr)
+      title: json['title'] as String? ?? '',
+      body: json['body'] as String? ?? '',
+      category: json['category'] as String? ?? '',
+      coverImage: (json['coverImage'] as String?)?.isNotEmpty == true
+          ? json['coverImage'] as String
           : null,
       likes: (json['likesCount'] as num?)?.toInt() ??
           (json['likes'] as num?)?.toInt() ??
           0,
-      commentsCount: (json['commentsCount'] as num?)?.toInt() ??
-          (json['comments'] as num?)?.toInt() ??
-          0,
+      commentsCount: (json['commentsCount'] as num?)?.toInt() ?? 0,
       sharesCount: (json['sharesCount'] as num?)?.toInt() ?? 0,
-      status: json['status']?.toString() ?? 'Published',
-      publishedAt: publishedAt,
-      timeAgo: json['timeAgo']?.toString() ?? '',
-      publishedLabel: json['publishedLabel']?.toString() ??
-          (publishedAt != null ? _formatDate(publishedAt) : ''),
+      status: json['status'] as String? ?? 'Published',
+      publishedAt: json['publishedAt'] != null
+          ? DateTime.tryParse(json['publishedAt'].toString())
+          : null,
+      timeAgo: json['timeAgo'] as String? ?? '',
+      publishedLabel: json['publishedLabel'] as String? ??
+          (json['publishedAt'] != null
+              ? _formatDate(
+                  DateTime.tryParse(json['publishedAt'].toString()))
+              : ''),
       isLiked: json['isLikedByMe'] as bool? ??
           json['isLiked'] as bool? ??
           false,
       author: PostAuthor.fromJson(
-        json['author'] is Map
-            ? Map<String, dynamic>.from(json['author'] as Map)
-            : null,
-      ),
+          json['author'] as Map<String, dynamic>?),
     );
   }
 
   static String _formatDate(DateTime? d) {
     if (d == null) return '';
     const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec'
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
     ];
     return '${months[d.month - 1]} ${d.day}';
   }
@@ -153,12 +125,11 @@ class PostAuthor {
 
   factory PostAuthor.fromJson(Map<String, dynamic>? json) {
     if (json == null) return const PostAuthor();
-    final avatarRaw = json['avatarUrl'] ?? json['image'];
-    final avatar = resolveMediaUrl(avatarRaw?.toString());
+    final avatar = json['avatarUrl'] as String?;
     return PostAuthor(
-      name: json['name']?.toString() ?? 'Elite Trading',
-      avatarUrl: avatar.isNotEmpty ? avatar : null,
-      initials: json['initials']?.toString() ?? 'ET',
+      name: json['name'] as String? ?? 'Elite Trading',
+      avatarUrl: avatar?.isNotEmpty == true ? avatar : null,
+      initials: json['initials'] as String? ?? 'ET',
       isVerified: json['isVerified'] as bool? ?? false,
     );
   }
@@ -225,22 +196,25 @@ class CommentModel {
   factory CommentModel.fromJson(Map<String, dynamic> json) {
     final user = json['user'] as Map<String, dynamic>?;
     final name = _extractName(json);
-    final avatar = resolveMediaUrl(
-      user?['avatarUrl'] as String? ?? json['authorAvatar'] as String?,
-    );
+    final avatar = user?['avatarUrl'] as String? ??
+        json['authorAvatar'] as String?;
     return CommentModel(
       id: json['_id']?.toString() ?? json['id']?.toString() ?? '',
       postId: json['postId']?.toString() ?? '',
-      userId: user?['id']?.toString() ?? json['userId']?.toString() ?? '',
+      userId: user?['id']?.toString() ??
+          json['userId']?.toString() ??
+          '',
       authorName: name,
-      authorInitials: user?['initials'] as String? ?? _initials(name),
-      authorAvatar: avatar.isNotEmpty ? avatar : null,
+      authorInitials:
+          user?['initials'] as String? ?? _initials(name),
+      authorAvatar: avatar?.isNotEmpty == true ? avatar : null,
       text: json['text'] as String? ?? '',
       likes: (json['likesCount'] as num?)?.toInt() ??
           (json['likes'] as num?)?.toInt() ??
           0,
-      isLiked:
-          json['isLikedByMe'] as bool? ?? json['isLiked'] as bool? ?? false,
+      isLiked: json['isLikedByMe'] as bool? ??
+          json['isLiked'] as bool? ??
+          false,
       timeAgo: json['timeAgo'] as String? ?? '',
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'].toString())

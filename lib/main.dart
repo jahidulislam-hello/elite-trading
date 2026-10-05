@@ -27,6 +27,8 @@ void main() async {
     DeviceOrientation.portraitDown,
   ]);
 
+
+
   runApp(MyApp(initialRoute: AppRoutes.splash));
   //Hello we are
 }

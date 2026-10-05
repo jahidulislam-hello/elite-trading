@@ -17,6 +17,7 @@ void main() async {
   GoogleFonts.pendingFonts([GoogleFonts.roboto()]).catchError((e) {
     debugPrint('Font pre-caching failed: $e');
     return <void>[];
+
   });
 
 

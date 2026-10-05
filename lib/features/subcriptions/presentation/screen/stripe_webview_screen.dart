@@ -23,7 +23,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 /// ```
 class StripeWebViewScreen extends StatefulWidget {
   final String checkoutUrl;
-  final void Function(String? sessionId)? onSuccess;
+  final Function? onSuccess;
   final VoidCallback? onCancel;
 
   const StripeWebViewScreen({
@@ -120,7 +120,20 @@ class _StripeWebViewScreenState extends State<StripeWebViewScreen> {
       if (navigator.canPop()) navigator.pop();
 
       if (success) {
-        widget.onSuccess?.call(sessionId);
+        final callback = widget.onSuccess;
+        if (callback != null) {
+          if (callback is void Function(String?)) {
+            callback(sessionId);
+          } else if (callback is VoidCallback) {
+            callback();
+          } else {
+            try {
+              (callback as dynamic)(sessionId);
+            } catch (_) {
+              (callback as dynamic)();
+            }
+          }
+        }
       } else {
         widget.onCancel?.call();
       }

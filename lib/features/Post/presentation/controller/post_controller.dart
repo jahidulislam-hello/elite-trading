@@ -19,16 +19,26 @@ class PostController extends GetxController {
   final RxString postsError = ''.obs;
   final RxString accessLevel = 'full'.obs;
   final RxInt totalPosts = 0.obs;
+  final RxBool isLoadingMorePosts = false.obs;
+  int _currentPostsPage = 1;
+  int _totalPostsPages = 1;
+  int _postsRequestId = 0;
 
   // ─── Selected post + comments ────────────────────────────────────────────
   final Rx<PostModel?> selectedPost = Rx<PostModel?>(null);
   final RxList<CommentModel> comments = <CommentModel>[].obs;
   final RxBool isCommentsLoading = false.obs;
+  final RxBool isLoadingMoreComments = false.obs;
   final RxString commentsError = ''.obs;
+  int _currentCommentsPage = 1;
+  int _totalCommentsPages = 1;
+  int _commentsRequestId = 0;
   final TextEditingController commentInputController = TextEditingController();
   final RxBool isSendingComment = false.obs;
 
-  int get totalComments => comments.length;
+  int get totalComments => selectedPost.value?.commentsCount ?? comments.length;
+  bool get hasMorePosts => _currentPostsPage < _totalPostsPages;
+  bool get hasMoreComments => _currentCommentsPage < _totalCommentsPages;
 
   // ─── Lifecycle ────────────────────────────────────────────────────────────
   @override
@@ -39,23 +49,77 @@ class PostController extends GetxController {
 
   // ─── Data loading ─────────────────────────────────────────────────────────
 
-  Future<void> loadPosts({bool refresh = false}) async {
-    if (refresh) posts.clear();
-    isPostsLoading.value = true;
+  Future<void> loadPosts({bool refresh = false, bool loadMore = false}) async {
+    if (loadMore &&
+        (isPostsLoading.value ||
+            isLoadingMorePosts.value ||
+            _currentPostsPage >= _totalPostsPages)) {
+      return;
+    }
+
+    if (refresh) {
+      _currentPostsPage = 0;
+      _totalPostsPages = 1;
+      posts.clear();
+      isLoadingMorePosts.value = false;
+    }
+
+    final requestedPage = loadMore ? _currentPostsPage + 1 : 1;
+    final requestId = ++_postsRequestId;
+    if (loadMore) {
+      isLoadingMorePosts.value = true;
+    } else {
+      isPostsLoading.value = true;
+    }
     postsError.value = '';
     try {
-      final result = await _service.getPosts();
-      posts.value = result.posts;
-      accessLevel.value = result.access;
+      final result = await _service.getPosts(page: requestedPage);
+      if (requestId != _postsRequestId) return;
+
+      if (loadMore) {
+        posts.addAll(result.posts);
+      } else {
+        posts.value = result.posts;
+      }
+      accessLevel.value = result.access; // 'full' or 'limited'
       totalPosts.value = result.totalPosts;
+      _currentPostsPage = requestedPage;
+      _totalPostsPages = _totalPagesFrom(result.pagination, requestedPage);
+      // 'limited' is not an error — the screen renders the upgrade UI instead
+    } on SubscriptionRequiredException {
+      if (requestId != _postsRequestId) return;
+      accessLevel.value = 'limited';
+      posts.clear();
+      postsError.value = '';
+    } on ServerException catch (e) {
+      if (requestId != _postsRequestId) return;
+      if (e.statusCode == 403) {
+        accessLevel.value = 'limited';
+        posts.clear();
+        postsError.value = '';
+      } else {
+        postsError.value = e.message;
+      }
     } on AppException catch (e) {
+      if (requestId != _postsRequestId) return;
       postsError.value = e.message;
     } catch (e, s) {
+      if (requestId != _postsRequestId) return;
       debugPrint('loadPosts failed: $e\n$s');
       postsError.value = 'Failed to load posts. Please try again.';
     } finally {
-      isPostsLoading.value = false;
+      if (requestId == _postsRequestId) {
+        isPostsLoading.value = false;
+        isLoadingMorePosts.value = false;
+      }
     }
+  }
+
+  int _totalPagesFrom(Map<String, dynamic>? pagination, int fallbackPage) {
+    final value = pagination?['totalPage'];
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? fallbackPage;
+    return fallbackPage;
   }
 
   // ─── Navigation: open post detail / comments ──────────────────────────────
@@ -64,24 +128,59 @@ class PostController extends GetxController {
     selectedPost.value = post;
     comments.clear();
     commentsError.value = '';
+    _currentCommentsPage = 0;
+    _totalCommentsPages = 1;
+    isLoadingMoreComments.value = false;
     Get.to(() => const CommentScreen());
     _loadComments(post.id);
   }
 
-  Future<void> _loadComments(String postId) async {
-    isCommentsLoading.value = true;
+  Future<void> _loadComments(String postId, {bool loadMore = false}) async {
+    if (loadMore &&
+        (isCommentsLoading.value ||
+            isLoadingMoreComments.value ||
+            !hasMoreComments)) {
+      return;
+    }
+
+    final requestedPage = loadMore ? _currentCommentsPage + 1 : 1;
+    final requestId = ++_commentsRequestId;
+    if (loadMore) {
+      isLoadingMoreComments.value = true;
+    } else {
+      isCommentsLoading.value = true;
+    }
     commentsError.value = '';
     try {
-      final result = await _service.getPostComments(postId);
-      comments.value = result.comments;
+      final result = await _service.getPostComments(
+        postId,
+        page: requestedPage,
+      );
+      if (requestId != _commentsRequestId) return;
+
+      if (loadMore) {
+        comments.addAll(result.comments);
+      } else {
+        comments.value = result.comments;
+      }
+      _currentCommentsPage = requestedPage;
+      _totalCommentsPages = _totalPagesFrom(result.pagination, requestedPage);
     } on AppException catch (e) {
+      if (requestId != _commentsRequestId) return;
       commentsError.value = e.message;
     } catch (_) {
+      if (requestId != _commentsRequestId) return;
       commentsError.value = 'Failed to load comments.';
     } finally {
-      isCommentsLoading.value = false;
+      if (requestId == _commentsRequestId) {
+        isCommentsLoading.value = false;
+        isLoadingMoreComments.value = false;
+      }
     }
   }
+
+  Future<void> loadMoreComments(String postId) =>
+      _loadComments(postId, loadMore: true);
 
   // ─── Comments ─────────────────────────────────────────────────────────────
 
@@ -136,8 +235,8 @@ class PostController extends GetxController {
     );
     try {
       final result = await _service.toggleCommentLike(commentId);
-      comments[index] =
-          comments[index].copyWith(isLiked: result.isLiked, likes: result.likesCount);
+      comments[index] = comments[index]
+          .copyWith(isLiked: result.isLiked, likes: result.likesCount);
     } catch (_) {
       comments[index] = old; // revert
     }
@@ -160,8 +259,8 @@ class PostController extends GetxController {
     }
     try {
       final result = await _service.togglePostLike(postId);
-      posts[index] =
-          posts[index].copyWith(isLiked: result.isLiked, likes: result.likesCount);
+      posts[index] = posts[index]
+          .copyWith(isLiked: result.isLiked, likes: result.likesCount);
       if (selectedPost.value?.id == postId) {
         selectedPost.value = posts[index];
       }

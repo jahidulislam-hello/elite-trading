@@ -3,7 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../../core/exceptions/app_exceptions.dart';
+import '../../../../core/services/storage_service.dart';
+import '../../../authentication/auth_service.dart';
+import '../../../authentication/presentation/controller/auth_controller.dart';
 import '../../../bottom_nab_bar/presentation/controller/bottom_nav_controller.dart';
+import '../../../profile/controller/profile_controller.dart';
 import '../../data/model/plan_model.dart';
 import '../../data/model/subscription_models.dart';
 import '../../subscription_service.dart';
@@ -12,6 +16,7 @@ import '../screen/stripe_webview_screen.dart';
 class SubscriptionsController extends GetxController {
   // ─── Service ──────────────────────────────────────────────────────────────
   final SubscriptionService _service = SubscriptionService();
+  final AuthService _authService = AuthService();
 
   // ─── Step progress ────────────────────────────────────────────────────────
   final RxInt currentStep = 1.obs;
@@ -36,7 +41,8 @@ class SubscriptionsController extends GetxController {
   // ─── Trial status ────────────────────────────────────────────────────────
   final Rx<TrialStatusModel?> trialStatus = Rx<TrialStatusModel?>(null);
   final Rx<TrialConfigModel?> trialConfig = Rx<TrialConfigModel?>(null);
-  final RxBool isTrialEligible = true.obs;
+  final RxBool isTrialEligible = false.obs;
+  final RxString trialStatusError = ''.obs;
 
   // ─── Comparison table (derived from the subscription API) ────────────────
 
@@ -54,9 +60,7 @@ class SubscriptionsController extends GetxController {
     ) =>
         PlanComparisonRow(
           label,
-          list
-              .map((p) => PlanComparisonCell(included: hasFlag(p)))
-              .toList(),
+          list.map((p) => PlanComparisonCell(included: hasFlag(p))).toList(),
         );
 
     void addFlagRow(
@@ -127,9 +131,8 @@ class SubscriptionsController extends GetxController {
     return seen.values.toList();
   }
 
-  String _capitalize(String value) => value.isEmpty
-      ? value
-      : '${value[0].toUpperCase()}${value.substring(1)}';
+  String _capitalize(String value) =>
+      value.isEmpty ? value : '${value[0].toUpperCase()}${value.substring(1)}';
 
   void selectPlan(String id) {
     selectedPlanId.value = id;
@@ -148,28 +151,13 @@ class SubscriptionsController extends GetxController {
     isPlansLoading.value = true;
     plansError.value = '';
     try {
-      final results = await Future.wait([
-        _service.getPlans(),
-        _service.getTrialStatus().catchError((_) => TrialStatusModel(
-              hasUsedFreeTrial: false,
-              canStartFreeTrial: true,
-            )),
-        _loadTrialConfigOrNull(),
-      ]);
-
-      final fetchedPlans = results[0] as List<SubscriptionPlan>;
-      final fetchedTrial = results[1] as TrialStatusModel;
-      final fetchedConfig = results[2] as TrialConfigModel?;
-
+      final fetchedPlans = await _service.getPlans();
       plans.value = fetchedPlans;
-      trialStatus.value = fetchedTrial;
-      if (fetchedConfig != null) trialConfig.value = fetchedConfig;
-      isTrialEligible.value = fetchedTrial.canStartFreeTrial;
 
       // Auto-select the first plan (or VIP if present)
       if (fetchedPlans.isNotEmpty) {
-        final vip = fetchedPlans.firstWhereOrNull(
-            (p) => p.name.toLowerCase() == 'vip');
+        final vip =
+            fetchedPlans.firstWhereOrNull((p) => p.name.toLowerCase() == 'vip');
         final first = vip ?? fetchedPlans.first;
         selectedPlanId.value = first.id;
         _selectedPlan.value = first;
@@ -181,6 +169,8 @@ class SubscriptionsController extends GetxController {
     } finally {
       isPlansLoading.value = false;
     }
+
+    await refreshTrialStatus();
   }
 
   void onContinuePressed() {
@@ -206,20 +196,27 @@ class SubscriptionsController extends GetxController {
 
   /// Reason the trial button is unavailable, straight from the backend
   /// eligibility check (already used trial, active paid plan, trial disabled).
-  String get trialUnavailableReason =>
-      trialStatus.value?.reason ??
-      'Free trial is not available for this account.';
+  String get trialUnavailableReason => trialStatusError.value.isNotEmpty
+      ? trialStatusError.value
+      : trialStatus.value?.reason ??
+          'Free trial is not available for this account.';
 
   Future<void> refreshTrialStatus() async {
     isTrialStatusLoading.value = true;
+    trialStatusError.value = '';
+    isTrialEligible.value = false;
     try {
       final status = await _service.getTrialStatus();
       trialStatus.value = status;
       isTrialEligible.value = status.canStartFreeTrial;
       final config = await _loadTrialConfigOrNull();
       if (config != null) trialConfig.value = config;
+    } on AppException catch (e, s) {
+      debugPrint('refreshTrialStatus failed: $e\n$s');
+      trialStatusError.value = e.message;
     } catch (e, s) {
       debugPrint('refreshTrialStatus failed: $e\n$s');
+      trialStatusError.value = 'Unable to verify free-trial eligibility.';
     } finally {
       isTrialStatusLoading.value = false;
     }
@@ -435,8 +432,18 @@ class SubscriptionsController extends GetxController {
 
   String _formatDate(DateTime d) {
     const months = [
-      'Jan','Feb','Mar','Apr','May','Jun',
-      'Jul','Aug','Sep','Oct','Nov','Dec'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
     ];
     return '${months[d.month - 1]} ${d.day}, ${d.year}';
   }
@@ -473,14 +480,24 @@ class SubscriptionsController extends GetxController {
         couponCode: isFreeTrial ? null : appliedCoupon.value?.code,
       );
 
-      if (result.paymentRequired && result.checkoutUrl != null) {
+      if (result.paymentRequired) {
+        if (result.checkoutUrl == null ||
+            result.checkoutUrl!.isEmpty ||
+            result.purchase.id.isEmpty) {
+          throw ServerException(
+            'The payment service returned an incomplete checkout response.',
+            null,
+          );
+        }
         // ── Paid plan → open Stripe checkout in-app ──────────────────────
         isPurchaseLoading.value = false;
         Get.to(
           () => StripeWebViewScreen(
             checkoutUrl: result.checkoutUrl!,
-            onSuccess: () =>
-                _goHomeAfterPurchase('Payment successful! Subscription activated.'),
+            onSuccess: (sessionId) => _handlePaidCheckoutSuccess(
+              result,
+              checkoutSessionId: sessionId,
+            ),
             // The checkout screen pops itself; step back to the plan list so
             // another plan can be picked.
             onCancel: _returnToPlanList,
@@ -488,6 +505,13 @@ class SubscriptionsController extends GetxController {
           transition: Transition.upToDown,
         );
       } else {
+        if (!result.purchase.isActive ||
+            result.purchase.paymentStatus != 'completed') {
+          throw ServerException(
+            'The server did not confirm subscription activation.',
+            null,
+          );
+        }
         // ── Free trial or 100% coupon → already activated ────────────────
         // The backend echoes the granted length; fall back to the configured
         // offer, and to a length-free message when neither is known.
@@ -510,6 +534,101 @@ class SubscriptionsController extends GetxController {
     }
   }
 
+  Future<void> _handlePaidCheckoutSuccess(
+    PurchaseResult result, {
+    String? checkoutSessionId,
+  }) async {
+    isPurchaseLoading.value = true;
+    final purchaseId = result.purchase.id;
+    var isActivated = false;
+
+    // Resolve userId:
+    String userId = result.purchase.userId;
+    if (userId.isEmpty) {
+      try {
+        final storage = Get.find<StorageService>();
+        userId = storage.getString(StorageKeys.userId) ?? '';
+      } catch (_) {}
+    }
+    if (userId.isEmpty && Get.isRegistered<AuthController>()) {
+      userId = Get.find<AuthController>().currentUser.value?.id ?? '';
+    }
+    if (userId.isEmpty) {
+      try {
+        final profile = await _authService.myProfile();
+        userId = profile.id;
+      } catch (_) {}
+    }
+
+    final planName = result.purchase.subscriptionName.isNotEmpty
+        ? result.purchase.subscriptionName
+        : (_selectedPlan.value?.name ?? 'VIP');
+
+    // Immediately trigger backend webhook sync so database updates without waiting
+    if (purchaseId.isNotEmpty) {
+      await _service.confirmStripePayment(
+        purchaseId: purchaseId,
+        subscriptionId: result.purchase.subscriptionId,
+        subscriptionName: planName,
+        userId: userId,
+        sessionId: checkoutSessionId ?? result.sessionId,
+        amount: result.finalAmount > 0
+            ? result.finalAmount
+            : (_selectedPlan.value?.price ?? 0.0),
+        couponCode: appliedCoupon.value?.code,
+      );
+    }
+
+    // Poll to verify active subscription status
+    for (var attempt = 0; attempt < 8; attempt++) {
+      try {
+        final current = await _service.getCurrentSubscription();
+        if (current != null && current.isActive && current.paymentStatus == 'completed') {
+          isActivated = true;
+          break;
+        }
+        final profile = await _authService.myProfile();
+        if (profile.isSubscriptionActive) {
+          isActivated = true;
+          if (Get.isRegistered<AuthController>()) {
+            Get.find<AuthController>().currentUser.value = profile;
+          }
+          if (Get.isRegistered<ProfileController>()) {
+            Get.find<ProfileController>().loadProfile(silent: true);
+          }
+          break;
+        }
+      } catch (e, s) {
+        debugPrint('Subscription activation check failed: $e\n$s');
+      }
+
+      if (attempt < 7) {
+        await Future.delayed(const Duration(milliseconds: 1000));
+      }
+    }
+
+    // Optimistically update frontend state so UI immediately reflects the purchase
+    if (Get.isRegistered<AuthController>()) {
+      final user = Get.find<AuthController>().currentUser.value;
+      if (user != null && !user.isSubscriptionActive) {
+        final updatedUser = user.copyWith(
+          subscriptionStatus: 'active',
+          subscriptionType: planName,
+          subscriptionEndDate: DateTime.now().add(const Duration(days: 30)),
+        );
+        Get.find<AuthController>().currentUser.value = updatedUser;
+      }
+    }
+
+    isPurchaseLoading.value = false;
+
+    _goHomeAfterPurchase(
+      isActivated
+          ? 'Payment successful! Subscription activated.'
+          : 'Payment received! Welcome to $planName.',
+    );
+  }
+
   /// Sends the user back to the plan list after an abandoned checkout.
   ///
   /// The predicate also stops at the first route, so this can never empty the
@@ -523,21 +642,37 @@ class SubscriptionsController extends GetxController {
 
   /// Returns to the home tabs after a completed purchase.
   ///
-  /// Snackbars are GetX routes, so any open one has to be closed *before*
-  /// offAllNamed — otherwise its barrier survives the stack replacement and
-  /// silently absorbs every tap on the nav bar.
+  /// Cleans the entire navigation stack and routes to the home screen
+  /// (tab 0 in navbar) while fetching fresh signals, posts, notifications,
+  /// history, and profile.
   void _goHomeAfterPurchase(String message) {
     if (Get.isSnackbarOpen) Get.closeAllSnackbars();
-    refreshTrialStatus();
+
+    // Cleanly reset navigation stack to BottomNavScreen
     Get.offAllNamed(AppRoutes.bottomNavScreen);
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Access level just changed, so every tab needs fresh data.
-      if (Get.isRegistered<BottomNavController>()) {
-        final nav = Get.find<BottomNavController>();
-        nav.selectedIndex.value = 0;
-        nav.refreshAllTabs();
-      }
+    // Refresh all controllers and tabs after navigation mounts
+    Future.delayed(const Duration(milliseconds: 250), () async {
+      try {
+        if (Get.isRegistered<AuthController>()) {
+          await Get.find<AuthController>().refreshCurrentUser();
+        }
+      } catch (_) {}
+
+      try {
+        if (Get.isRegistered<ProfileController>()) {
+          await Get.find<ProfileController>().loadProfile(silent: true);
+        }
+      } catch (_) {}
+
+      try {
+        if (Get.isRegistered<BottomNavController>()) {
+          final nav = Get.find<BottomNavController>();
+          nav.selectedIndex.value = 0; // Home screen (SignalScreen)
+          nav.refreshAllTabs();
+        }
+      } catch (_) {}
+
       _showSuccess(message);
     });
   }

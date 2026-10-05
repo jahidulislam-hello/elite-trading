@@ -59,3 +59,11 @@ class UnknownException extends AppException {
   UnknownException([String? details])
       : super('An unknown error occurred', details);
 }
+
+class SubscriptionRequiredException extends ServerException {
+  SubscriptionRequiredException([String? msg])
+      : super(
+          msg ?? 'An active subscription is required to view this content.',
+          403,
+        );
+}

@@ -69,17 +69,30 @@ class ApiService {
     try {
       final data = error.response?.data;
       if (data is Map<String, dynamic>) {
-        // Top-level message (most common)
-        if (data['message'] is String && (data['message'] as String).isNotEmpty) {
-          return data['message'] as String;
-        }
-        // Zod validation – first error in errorMessages array
-        final errors = data['errorMessages'];
-        if (errors is List && errors.isNotEmpty) {
-          final first = errors.first;
-          if (first is Map<String, dynamic> && first['message'] is String) {
-            return first['message'] as String;
+        // Detailed validation sources: backend uses errorSources (or errorSoures / errorMessages)
+        final sources =
+            data['errorSources'] ?? data['errorSoures'] ?? data['errorMessages'];
+        if (sources is List && sources.isNotEmpty) {
+          final messages = <String>[];
+          for (final item in sources) {
+            if (item is Map<String, dynamic>) {
+              final msg = item['message'];
+              if (msg is String && msg.trim().isNotEmpty) {
+                messages.add(msg.trim());
+              }
+            } else if (item is String && item.trim().isNotEmpty) {
+              messages.add(item.trim());
+            }
           }
+          if (messages.isNotEmpty) {
+            return messages.join('. ');
+          }
+        }
+
+        // Top-level message (most common)
+        if (data['message'] is String &&
+            (data['message'] as String).trim().isNotEmpty) {
+          return (data['message'] as String).trim();
         }
       }
     } catch (_) {}
@@ -99,6 +112,9 @@ class ApiService {
       case DioExceptionType.badResponse:
         final statusCode = error.response?.statusCode;
         final message = _extractErrorMessage(error);
+        if (statusCode == 403) {
+          return SubscriptionRequiredException(message);
+        }
         return ServerException(message, statusCode);
 
       case DioExceptionType.cancel:

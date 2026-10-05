@@ -90,6 +90,16 @@ class PostController extends GetxController {
       if (requestId != _postsRequestId) return;
       accessLevel.value = 'limited';
       posts.clear();
+      postsError.value = '';
+    } on ServerException catch (e) {
+      if (requestId != _postsRequestId) return;
+      if (e.statusCode == 403) {
+        accessLevel.value = 'limited';
+        posts.clear();
+        postsError.value = '';
+      } else {
+        postsError.value = e.message;
+      }
     } on AppException catch (e) {
       if (requestId != _postsRequestId) return;
       postsError.value = e.message;

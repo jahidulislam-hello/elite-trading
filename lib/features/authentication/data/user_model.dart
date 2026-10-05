@@ -47,9 +47,14 @@ class UserModel {
       email: json['email'] as String? ?? '',
       phone: json['phone'] as String?,
       address: json['address'] as String?,
-      image: json['image'] != null
+      image: json['image'] is Map<String, dynamic>
           ? UserImage.fromJson(json['image'] as Map<String, dynamic>)
-          : null,
+          : (json['image'] is String && (json['image'] as String).isNotEmpty)
+              ? UserImage(
+                  publicFileURL: json['image'] as String,
+                  path: json['image'] as String,
+                )
+              : null,
       role: json['role'] as String? ?? 'user',
       status: json['status'] as String?,
       isDeleted: json['isDeleted'] as bool? ?? false,
@@ -93,6 +98,23 @@ class UserModel {
       return '${firstName!} ${lastName ?? ''}'.trim();
     }
     return email.split('@').first;
+  }
+
+  /// Whether the user currently has active access (not expired).
+  bool get isSubscriptionActive {
+    if (role.toLowerCase() == 'admin') return true;
+    final now = DateTime.now();
+    final sStatus = subscriptionStatus.toLowerCase();
+    if (sStatus == 'active') {
+      if (subscriptionEndDate == null) return true;
+      return subscriptionEndDate!.isAfter(now);
+    }
+    if (sStatus == 'trial') {
+      final end = freeTrialEndDate ?? subscriptionEndDate;
+      if (end == null) return true;
+      return end.isAfter(now);
+    }
+    return false;
   }
 
   UserModel copyWith({

@@ -24,193 +24,216 @@ class SignalScreen extends GetView<SignalController> {
             ),
           ),
           SafeArea(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 100.h),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // ── Greeting header ──────────────────────────────────
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Good morning',
-                            style: GoogleFonts.poppins(
-                              fontSize: 13.sp,
-                              color: Colors.white54,
-                            ),
-                          ),
-                          SizedBox(height: 4.h),
-                          Obx(() => Text(
-                                controller.userName.value,
-                                style: GoogleFonts.poppins(
-                                  fontSize: 22.sp,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white,
-                                ),
-                              )),
-                        ],
-                      ),
-                      Row(
-                        children: [
-                          SizedBox(width: 12.w),
-                          GestureDetector(
-                            onTap: () {
-                              Get.toNamed(AppRoutes.profilePage);
-                            },
-                            child: const AppProfileAvatar(),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-
-                  SizedBox(height: 26.h),
-
-                  // ── Global market hours ──────────────────────────────
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.public,
-                              size: 16.sp, color: Colors.white70),
-                          SizedBox(width: 8.w),
-                          Text(
-                            'Global Market Hours',
-                            style: GoogleFonts.poppins(
-                              fontSize: 14.sp,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Text(
-                        'FOREX · UTC',
-                        style: GoogleFonts.poppins(
-                          fontSize: 10.sp,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.white54,
-                          letterSpacing: 1,
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 12.h),
-
-                  Obx(() {
-                    if (controller.isMarketHoursLoading.value) {
-                      return _MarketHoursLoader();
-                    }
-                    if (controller.marketHours.isEmpty) {
-                      return _MarketHoursFallback();
-                    }
-                    return GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: controller.marketHours.length,
-                      gridDelegate:
-                          SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 12.w,
-                        mainAxisSpacing: 12.h,
-                        childAspectRatio: 1.5,
-                      ),
-                      itemBuilder: (context, index) => _MarketHourCard(
-                          market: controller.marketHours[index]),
-                    );
-                  }),
-
-                  SizedBox(height: 26.h),
-
-                  // ── Active signals header ────────────────────────────
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            'Active Signals',
-                            style: GoogleFonts.poppins(
-                              fontSize: 16.sp,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
-                          ),
-                          SizedBox(width: 8.w),
-                          Obx(
-                            () => Container(
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: 8.w, vertical: 2.h),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF8000FF)
-                                    .withValues(alpha: 0.4),
-                                borderRadius: BorderRadius.circular(20.r),
-                              ),
-                              child: Text(
-                                '${controller.totalSignals}',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 11.sp,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      GestureDetector(
-                        onTap: controller.onSeeAllSignalsPressed,
-                        child: Row(
+            child: RefreshIndicator(
+              onRefresh: () async {
+                await Future.wait([
+                  controller.loadMarketHours(),
+                  controller.loadSignals(refresh: true),
+                ]);
+              },
+              color: const Color(0xFF7B1FE0),
+              backgroundColor: const Color(0xFF1B1830),
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 100.h),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ── Greeting header ──────────────────────────────────
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'See All',
+                              'Good morning',
                               style: GoogleFonts.poppins(
-                                fontSize: 15.sp,
-                                fontWeight: FontWeight.w700,
-                                color: const Color(0xFF8000FF),
+                                fontSize: 13.sp,
+                                color: Colors.white54,
                               ),
                             ),
-                            Icon(Icons.chevron_right,
-                                size: 19.sp,
-                                color: const Color(0xFF7B1FE0)),
+                            SizedBox(height: 4.h),
+                            Obx(() => Text(
+                                  controller.userName.value,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 22.sp,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                  ),
+                                )),
                           ],
                         ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 14.h),
-
-                  // ── Signals list ─────────────────────────────────────
-                  Obx(() {
-                    if (controller.isSignalsLoading.value &&
-                        controller.signals.isEmpty) {
-                      return const Center(
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(vertical: 40),
-                          child: CircularProgressIndicator(
-                              color: Color(0xFF7B1FE0), strokeWidth: 2),
+                        Row(
+                          children: [
+                            SizedBox(width: 12.w),
+                            GestureDetector(
+                              onTap: () {
+                                Get.toNamed(AppRoutes.profilePage);
+                              },
+                              child: const AppProfileAvatar(),
+                            ),
+                          ],
                         ),
+                      ],
+                    ),
+
+                    SizedBox(height: 26.h),
+
+                    // ── Global market hours ──────────────────────────────
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.public,
+                                size: 16.sp, color: Colors.white70),
+                            SizedBox(width: 8.w),
+                            Text(
+                              'Global Market Hours',
+                              style: GoogleFonts.poppins(
+                                fontSize: 14.sp,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Text(
+                          'FOREX · UTC',
+                          style: GoogleFonts.poppins(
+                            fontSize: 10.sp,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white54,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 12.h),
+
+                    Obx(() {
+                      if (controller.isMarketHoursLoading.value) {
+                        return _MarketHoursLoader();
+                      }
+                      if (controller.marketHours.isEmpty) {
+                        return _MarketHoursFallback();
+                      }
+                      return GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: controller.marketHours.length,
+                        gridDelegate:
+                            SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 12.w,
+                          mainAxisSpacing: 12.h,
+                          childAspectRatio: 1.5,
+                        ),
+                        itemBuilder: (context, index) => _MarketHourCard(
+                            market: controller.marketHours[index]),
                       );
-                    }
-                    if (controller.signalsError.value.isNotEmpty &&
-                        controller.signals.isEmpty) {
-                      return _SignalsError(
-                        message: controller.signalsError.value,
-                        onRetry: controller.loadSignals,
+                    }),
+
+                    SizedBox(height: 26.h),
+
+                    // ── Active signals header ────────────────────────────
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              'Active Signals',
+                              style: GoogleFonts.poppins(
+                                fontSize: 16.sp,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                            SizedBox(width: 8.w),
+                            Obx(
+                              () => Container(
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 8.w, vertical: 2.h),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF8000FF)
+                                      .withValues(alpha: 0.4),
+                                  borderRadius: BorderRadius.circular(20.r),
+                                ),
+                                child: Text(
+                                  '${controller.totalSignals}',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 11.sp,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        GestureDetector(
+                          onTap: controller.onSeeAllSignalsPressed,
+                          child: Row(
+                            children: [
+                              Text(
+                                'See All',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 15.sp,
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFF8000FF),
+                                ),
+                              ),
+                              Icon(Icons.chevron_right,
+                                  size: 19.sp,
+                                  color: const Color(0xFF7B1FE0)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 14.h),
+
+                    // ── Signals list ─────────────────────────────────────
+                    Obx(() {
+                      if (controller.isSignalsLoading.value &&
+                          controller.signals.isEmpty) {
+                        return const Center(
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(vertical: 40),
+                            child: CircularProgressIndicator(
+                                color: Color(0xFF7B1FE0), strokeWidth: 2),
+                          ),
+                        );
+                      }
+                      if (controller.signalsError.value.isNotEmpty &&
+                          controller.signals.isEmpty) {
+                        return _SignalsError(
+                          message: controller.signalsError.value,
+                          onRetry: controller.loadSignals,
+                        );
+                      }
+                      if (controller.signals.isEmpty) {
+                        if (controller.accessLevel.value == 'limited') {
+                          return _SignalsLockedTeaserCard(
+                            onUpgrade: () =>
+                                Get.toNamed(AppRoutes.choosePlanScreen),
+                          );
+                        }
+                        return _EmptySignalsCard(
+                          onRefresh: () =>
+                              controller.loadSignals(refresh: true),
+                        );
+                      }
+                      return Column(
+                        children: controller.signals
+                            .map((s) => SignalCard(signal: s))
+                            .toList(),
                       );
-                    }
-                    return Column(
-                      children: controller.signals
-                          .map((s) => SignalCard(signal: s))
-                          .toList(),
-                    );
-                  }),
-                ],
+                    }),
+                  ],
+                ),
               ),
             ),
           ),
@@ -402,6 +425,129 @@ class _SignalsError extends StatelessWidget {
                   style: GoogleFonts.poppins(
                       fontSize: 13.sp,
                       color: const Color(0xFF7B1FE0))),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Signals locked teaser card ────────────────────────────────────────────
+
+class _SignalsLockedTeaserCard extends StatelessWidget {
+  final VoidCallback onUpgrade;
+  const _SignalsLockedTeaserCard({required this.onUpgrade});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(20.w),
+      margin: EdgeInsets.only(top: 8.h),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1B1830),
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: EdgeInsets.all(12.w),
+            decoration: BoxDecoration(
+              color: const Color(0xFF7B1FE0).withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.lock_outline_rounded,
+              color: const Color(0xFF9B6BFF),
+              size: 26.sp,
+            ),
+          ),
+          SizedBox(height: 14.h),
+          Text(
+            'Unlock Live Signals',
+            style: GoogleFonts.poppins(
+              fontSize: 16.sp,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+            ),
+          ),
+          SizedBox(height: 6.h),
+          Text(
+            'Subscribe or start your free trial to unlock real-time active signals with entry, take-profit, and stop-loss targets.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.poppins(
+              fontSize: 12.sp,
+              color: Colors.white54,
+              height: 1.5,
+            ),
+          ),
+          SizedBox(height: 16.h),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: onUpgrade,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF7B1FE0),
+                padding: EdgeInsets.symmetric(vertical: 13.h),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12.r),
+                ),
+                elevation: 0,
+              ),
+              child: Text(
+                'View Plans & Start Trial',
+                style: GoogleFonts.poppins(
+                  fontSize: 13.sp,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Empty signals state ───────────────────────────────────────────────────
+
+class _EmptySignalsCard extends StatelessWidget {
+  final VoidCallback onRefresh;
+  const _EmptySignalsCard({required this.onRefresh});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: 36.h, horizontal: 16.w),
+        child: Column(
+          children: [
+            Icon(
+              Icons.bolt_outlined,
+              size: 40.sp,
+              color: Colors.white24,
+            ),
+            SizedBox(height: 12.h),
+            Text(
+              'No active signals right now',
+              style: GoogleFonts.poppins(
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w600,
+                color: Colors.white70,
+              ),
+            ),
+            SizedBox(height: 4.h),
+            Text(
+              'Our analysts post high-probability setups regularly. Pull down to refresh or check back soon.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(
+                fontSize: 12.sp,
+                color: Colors.white38,
+                height: 1.4,
+              ),
             ),
           ],
         ),

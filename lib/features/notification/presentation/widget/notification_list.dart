@@ -4,8 +4,7 @@ import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../data/model/notification_model.dart';
 import '../controller/notification_controller.dart';
-// ignore: file_names
-import 'notification_detail)dialog.dart';
+import 'notification_detail_dialog.dart';
 
 /// Icon + colors per notification type — shared between the tile and the dialog.
 ({IconData icon, Color bg, Color fg}) notificationIconStyle(

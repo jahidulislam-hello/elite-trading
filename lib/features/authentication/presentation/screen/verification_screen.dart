@@ -29,7 +29,7 @@ class VerificationScreen extends GetView<AuthController> {
 
     final focusedPinTheme = defaultPinTheme.copyDecorationWith(
       border: Border.all(color: const Color(0xFF6E00DD), width: 1.5),
-      color: const Color(0xFF6E00DD).withOpacity(0.08),
+      color: const Color(0xFF6E00DD).withValues(alpha: 0.08),
     );
 
     final submittedPinTheme = defaultPinTheme.copyDecorationWith(

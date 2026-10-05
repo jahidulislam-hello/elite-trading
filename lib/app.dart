@@ -17,7 +17,7 @@ class MyApp extends StatelessWidget {
       splitScreenMode: true,
       builder: (context, child) {
         return GetMaterialApp(
-          title: 'HealthCare App',
+          title: 'Elite Trading',
           debugShowCheckedModeBanner: false,
           theme: ThemeData(
             fontFamily: 'Helvetica',

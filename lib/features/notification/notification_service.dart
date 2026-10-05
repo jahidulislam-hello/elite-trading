@@ -28,15 +28,43 @@ class NotificationService {
       queryParameters: query,
     );
     _assertSuccess(response.data, 'Failed to load notifications.');
-    final data = response.data['data'] as Map<String, dynamic>? ?? {};
-    final rawList = data['notifications'] as List? ?? [];
+
+    final dynamic dataRaw = response.data['data'];
+    List rawList = [];
+    int unreadCount = 0;
+    int totalNotifications = 0;
+
+    if (dataRaw is List) {
+      rawList = dataRaw;
+      totalNotifications = rawList.length;
+    } else if (dataRaw is Map) {
+      final mapData = Map<String, dynamic>.from(dataRaw);
+      final listCandidate =
+          mapData['notifications'] ?? mapData['data'] ?? mapData['items'];
+      if (listCandidate is List) {
+        rawList = listCandidate;
+      }
+      unreadCount = (mapData['unreadCount'] as num?)?.toInt() ?? 0;
+      totalNotifications =
+          (mapData['totalNotifications'] as num?)?.toInt() ?? rawList.length;
+    }
+
+    final notifications = <NotificationModel>[];
+    for (final item in rawList) {
+      if (item is Map) {
+        notifications.add(
+          NotificationModel.fromJson(Map<String, dynamic>.from(item)),
+        );
+      }
+    }
+
     return NotificationListResult(
-      notifications: rawList
-          .map((e) => NotificationModel.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      unreadCount: data['unreadCount'] as int? ?? 0,
-      totalNotifications: data['totalNotifications'] as int? ?? 0,
-      pagination: response.data['pagination'] as Map<String, dynamic>?,
+      notifications: notifications,
+      unreadCount: unreadCount,
+      totalNotifications: totalNotifications,
+      pagination: response.data['pagination'] is Map
+          ? Map<String, dynamic>.from(response.data['pagination'] as Map)
+          : null,
     );
   }
 
@@ -80,6 +108,25 @@ class NotificationService {
   void _assertSuccess(dynamic responseData, String fallback) {
     if (responseData is Map<String, dynamic>) {
       if (responseData['success'] == false) {
+        final sources = responseData['errorSources'] ??
+            responseData['errorSoures'] ??
+            responseData['errorMessages'];
+        if (sources is List && sources.isNotEmpty) {
+          final messages = <String>[];
+          for (final item in sources) {
+            if (item is Map<String, dynamic>) {
+              final msg = item['message'];
+              if (msg is String && msg.trim().isNotEmpty) {
+                messages.add(msg.trim());
+              }
+            } else if (item is String && item.trim().isNotEmpty) {
+              messages.add(item.trim());
+            }
+          }
+          if (messages.isNotEmpty) {
+            throw ServerException(messages.join('. '), null);
+          }
+        }
         final msg = responseData['message'] as String?;
         throw ServerException(
             msg?.isNotEmpty == true ? msg! : fallback, null);

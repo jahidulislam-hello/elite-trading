@@ -41,37 +41,37 @@ class BottomNavController extends GetxController {
   /// such as activating a subscription.
   void refreshAllTabs() {
     for (var index = 0; index < screens.length; index++) {
-      refreshTab(index);
+      refreshTab(index, force: true);
     }
   }
 
   /// Re-fetches the data the given tab shows, so the user always sees the
   /// latest server state when switching tabs.
-  void refreshTab(int index) {
+  void refreshTab(int index, {bool force = false}) {
     switch (index) {
       case 0:
         if (Get.isRegistered<SignalController>()) {
           final signal = Get.find<SignalController>();
-          if (!signal.isSignalsLoading.value) signal.loadSignals();
-          if (!signal.isMarketHoursLoading.value) signal.loadMarketHours();
+          signal.loadSignals(refresh: force);
+          signal.loadMarketHours();
         }
         break;
       case 1:
         if (Get.isRegistered<NotificationController>()) {
           final notification = Get.find<NotificationController>();
-          if (!notification.isLoading.value) notification.loadNotifications();
+          notification.loadNotifications();
         }
         break;
       case 2:
         if (Get.isRegistered<PostController>()) {
           final post = Get.find<PostController>();
-          if (!post.isPostsLoading.value) post.loadPosts();
+          post.loadPosts(refresh: force);
         }
         break;
       case 3:
         if (Get.isRegistered<HistoryContainer>()) {
           final history = Get.find<HistoryContainer>();
-          if (!history.isLoading.value) history.loadHistory();
+          history.loadHistory(refresh: force);
         }
         break;
     }

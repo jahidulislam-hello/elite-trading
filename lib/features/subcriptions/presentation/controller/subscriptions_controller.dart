@@ -3,7 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../../core/exceptions/app_exceptions.dart';
+import '../../../../core/services/storage_service.dart';
+import '../../../authentication/auth_service.dart';
+import '../../../authentication/presentation/controller/auth_controller.dart';
 import '../../../bottom_nab_bar/presentation/controller/bottom_nav_controller.dart';
+import '../../../profile/controller/profile_controller.dart';
 import '../../data/model/plan_model.dart';
 import '../../data/model/subscription_models.dart';
 import '../../subscription_service.dart';
@@ -12,6 +16,7 @@ import '../screen/stripe_webview_screen.dart';
 class SubscriptionsController extends GetxController {
   // ─── Service ──────────────────────────────────────────────────────────────
   final SubscriptionService _service = SubscriptionService();
+  final AuthService _authService = AuthService();
 
   // ─── Step progress ────────────────────────────────────────────────────────
   final RxInt currentStep = 1.obs;
@@ -489,7 +494,10 @@ class SubscriptionsController extends GetxController {
         Get.to(
           () => StripeWebViewScreen(
             checkoutUrl: result.checkoutUrl!,
-            onSuccess: () => _handlePaidCheckoutSuccess(result.purchase.id),
+            onSuccess: (sessionId) => _handlePaidCheckoutSuccess(
+              result,
+              checkoutSessionId: sessionId,
+            ),
             // The checkout screen pops itself; step back to the plan list so
             // another plan can be picked.
             onCancel: _returnToPlanList,
@@ -526,34 +534,98 @@ class SubscriptionsController extends GetxController {
     }
   }
 
-  Future<void> _handlePaidCheckoutSuccess(String purchaseId) async {
+  Future<void> _handlePaidCheckoutSuccess(
+    PurchaseResult result, {
+    String? checkoutSessionId,
+  }) async {
+    isPurchaseLoading.value = true;
+    final purchaseId = result.purchase.id;
     var isActivated = false;
-    if (purchaseId.isNotEmpty) {
-      for (var attempt = 0; attempt < 10; attempt++) {
-        try {
-          final current = await _service.getCurrentSubscription();
-          if (current != null &&
-              current.id == purchaseId &&
-              current.isActive &&
-              current.paymentStatus == 'completed') {
-            isActivated = true;
-            break;
-          }
-        } on AppException catch (e, s) {
-          debugPrint('Subscription activation check failed: $e\n$s');
-        }
 
-        if (attempt < 9) {
-          await Future.delayed(const Duration(seconds: 1));
+    // Resolve userId:
+    String userId = result.purchase.userId;
+    if (userId.isEmpty) {
+      try {
+        final storage = Get.find<StorageService>();
+        userId = storage.getString(StorageKeys.userId) ?? '';
+      } catch (_) {}
+    }
+    if (userId.isEmpty && Get.isRegistered<AuthController>()) {
+      userId = Get.find<AuthController>().currentUser.value?.id ?? '';
+    }
+    if (userId.isEmpty) {
+      try {
+        final profile = await _authService.myProfile();
+        userId = profile.id;
+      } catch (_) {}
+    }
+
+    final planName = result.purchase.subscriptionName.isNotEmpty
+        ? result.purchase.subscriptionName
+        : (_selectedPlan.value?.name ?? 'VIP');
+
+    // Immediately trigger backend webhook sync so database updates without waiting
+    if (purchaseId.isNotEmpty) {
+      await _service.confirmStripePayment(
+        purchaseId: purchaseId,
+        subscriptionId: result.purchase.subscriptionId,
+        subscriptionName: planName,
+        userId: userId,
+        sessionId: checkoutSessionId ?? result.sessionId,
+        amount: result.finalAmount > 0
+            ? result.finalAmount
+            : (_selectedPlan.value?.price ?? 0.0),
+        couponCode: appliedCoupon.value?.code,
+      );
+    }
+
+    // Poll to verify active subscription status
+    for (var attempt = 0; attempt < 8; attempt++) {
+      try {
+        final current = await _service.getCurrentSubscription();
+        if (current != null && current.isActive && current.paymentStatus == 'completed') {
+          isActivated = true;
+          break;
         }
+        final profile = await _authService.myProfile();
+        if (profile.isSubscriptionActive) {
+          isActivated = true;
+          if (Get.isRegistered<AuthController>()) {
+            Get.find<AuthController>().currentUser.value = profile;
+          }
+          if (Get.isRegistered<ProfileController>()) {
+            Get.find<ProfileController>().loadProfile(silent: true);
+          }
+          break;
+        }
+      } catch (e, s) {
+        debugPrint('Subscription activation check failed: $e\n$s');
+      }
+
+      if (attempt < 7) {
+        await Future.delayed(const Duration(milliseconds: 1000));
       }
     }
+
+    // Optimistically update frontend state so UI immediately reflects the purchase
+    if (Get.isRegistered<AuthController>()) {
+      final user = Get.find<AuthController>().currentUser.value;
+      if (user != null && !user.isSubscriptionActive) {
+        final updatedUser = user.copyWith(
+          subscriptionStatus: 'active',
+          subscriptionType: planName,
+          subscriptionEndDate: DateTime.now().add(const Duration(days: 30)),
+        );
+        Get.find<AuthController>().currentUser.value = updatedUser;
+      }
+    }
+
+    isPurchaseLoading.value = false;
 
     _goHomeAfterPurchase(
       isActivated
           ? 'Payment successful! Subscription activated.'
-          : 'Payment received. Subscription activation is still processing; '
-              'your content will appear as soon as it is ready.',
+          : 'Payment received! Welcome to $planName.',
     );
   }
 
@@ -570,30 +642,38 @@ class SubscriptionsController extends GetxController {
 
   /// Returns to the home tabs after a completed purchase.
   ///
-  /// Returns to the existing shell when the subscription flow was opened from
-  /// it; otherwise creates a fresh shell after onboarding.
+  /// Cleans the entire navigation stack and routes to the home screen
+  /// (tab 0 in navbar) while fetching fresh signals, posts, notifications,
+  /// history, and profile.
   void _goHomeAfterPurchase(String message) {
     if (Get.isSnackbarOpen) Get.closeAllSnackbars();
 
-    final hasActiveShell = Get.isRegistered<BottomNavController>() &&
-        !Get.isPrepared<BottomNavController>();
-    if (hasActiveShell) {
-      Get.until((route) => route.settings.name == AppRoutes.bottomNavScreen);
-    } else {
-      Get.offAllNamed(AppRoutes.bottomNavScreen);
-    }
+    // Cleanly reset navigation stack to BottomNavScreen
+    Get.offAllNamed(AppRoutes.bottomNavScreen);
 
-    // Wait for the route transition before refreshing the existing or newly
-    // bound tab controllers.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
+    // Refresh all controllers and tabs after navigation mounts
+    Future.delayed(const Duration(milliseconds: 250), () async {
+      try {
+        if (Get.isRegistered<AuthController>()) {
+          await Get.find<AuthController>().refreshCurrentUser();
+        }
+      } catch (_) {}
+
+      try {
+        if (Get.isRegistered<ProfileController>()) {
+          await Get.find<ProfileController>().loadProfile(silent: true);
+        }
+      } catch (_) {}
+
+      try {
         if (Get.isRegistered<BottomNavController>()) {
           final nav = Get.find<BottomNavController>();
-          nav.selectedIndex.value = 0;
+          nav.selectedIndex.value = 0; // Home screen (SignalScreen)
           nav.refreshAllTabs();
         }
-        _showSuccess(message);
-      });
+      } catch (_) {}
+
+      _showSuccess(message);
     });
   }
 

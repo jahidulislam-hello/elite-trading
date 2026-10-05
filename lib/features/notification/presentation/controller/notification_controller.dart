@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 
 import '../../../../core/exceptions/app_exceptions.dart';
@@ -42,8 +43,10 @@ class NotificationController extends GetxController {
       notifications.value = result.notifications;
       unreadCount.value = result.unreadCount;
     } on AppException catch (e) {
+      debugPrint('loadNotifications AppException: ${e.message}');
       error.value = e.message;
-    } catch (_) {
+    } catch (e, s) {
+      debugPrint('loadNotifications unexpected error: $e\n$s');
       error.value = 'Failed to load notifications.';
     } finally {
       isLoading.value = false;

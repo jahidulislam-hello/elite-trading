@@ -60,10 +60,10 @@ class UnknownException extends AppException {
       : super('An unknown error occurred', details);
 }
 
-/// Thrown when the server returns 403 because the user lacks an active
-/// subscription.  The UI should show a locked / upgrade-prompt state instead
-/// of a generic error message.
-class SubscriptionRequiredException extends AppException {
+class SubscriptionRequiredException extends ServerException {
   SubscriptionRequiredException([String? msg])
-      : super(msg ?? 'An active subscription is required to view this content.');
+      : super(
+          msg ?? 'An active subscription is required to view this content.',
+          403,
+        );
 }

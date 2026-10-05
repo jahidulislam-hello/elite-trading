@@ -44,9 +44,11 @@ class NotificationModel {
       case 'news':
         return NotificationType.update;
       case 'trial':
+      case 'alert':
+        return NotificationType.alert;
       case 'general':
       default:
-        return NotificationType.alert;
+        return NotificationType.general;
     }
   }
 
@@ -54,25 +56,40 @@ class NotificationModel {
   String get dateGroup {
     if (sentAt == null) return 'RECENT';
     final now = DateTime.now();
-    final diff = now.difference(sentAt!).inDays;
-    if (diff == 0) return 'TODAY';
-    if (diff == 1) return 'YESTERDAY';
-    if (diff < 7) return 'THIS WEEK';
+    final today = DateTime(now.year, now.month, now.day);
+    final sentLocal = sentAt!.toLocal();
+    final sentDay = DateTime(sentLocal.year, sentLocal.month, sentLocal.day);
+    final diffDays = today.difference(sentDay).inDays;
+    if (diffDays <= 0) return 'TODAY';
+    if (diffDays == 1) return 'YESTERDAY';
+    if (diffDays < 7) return 'THIS WEEK';
     return 'EARLIER';
   }
 
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
-    final sentAtStr = json['sentAt'] as String?;
+    final sentAtRaw = json['sentAt'] ?? json['createdAt'];
+    DateTime? sentAt;
+    if (sentAtRaw is String) {
+      sentAt = DateTime.tryParse(sentAtRaw);
+    } else if (sentAtRaw is int) {
+      sentAt = DateTime.fromMillisecondsSinceEpoch(sentAtRaw);
+    }
+
     return NotificationModel(
-      id: json['id']?.toString() ?? '',
-      title: json['title'] as String? ?? '',
-      message: json['message'] as String? ?? '',
-      audience: json['audience'] as String? ?? '',
-      category: json['category'] as String? ?? 'General',
-      status: json['status'] as String? ?? 'Sent',
-      sentAt: sentAtStr != null ? DateTime.tryParse(sentAtStr) : null,
-      timeAgo: json['timeAgo'] as String? ?? '',
-      sentLabel: json['sentLabel'] as String? ?? '',
+      id: json['id']?.toString() ?? json['_id']?.toString() ?? '',
+      title: json['title']?.toString() ?? '',
+      message: json['message']?.toString() ??
+          json['description']?.toString() ??
+          json['body']?.toString() ??
+          '',
+      audience: json['audience']?.toString() ?? '',
+      category: json['category']?.toString() ?? 'General',
+      status: json['status']?.toString() ?? 'Sent',
+      sentAt: sentAt,
+      timeAgo: json['timeAgo']?.toString() ?? '',
+      sentLabel: json['sentLabel']?.toString() ??
+          json['sent']?.toString() ??
+          '',
       isRead: json['isRead'] as bool? ?? false,
     );
   }

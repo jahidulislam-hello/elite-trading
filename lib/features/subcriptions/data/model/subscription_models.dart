@@ -132,9 +132,14 @@ class PurchaseModel {
             ''
         : rawSubscriptionId?.toString() ?? '';
 
+    final rawUser = json['userId'] ?? json['user'];
+    final userId = rawUser is Map
+        ? (rawUser['_id'] ?? rawUser['id'])?.toString() ?? ''
+        : rawUser?.toString() ?? '';
+
     return PurchaseModel(
-      id: json['_id']?.toString() ?? '',
-      userId: json['userId']?.toString() ?? '',
+      id: (json['_id'] ?? json['id'])?.toString() ?? '',
+      userId: userId,
       subscriptionId: subscriptionId,
       subscriptionName: json['subscriptionName'] as String? ?? '',
       startDate: DateTime.tryParse(json['startDate']?.toString() ?? '') ??

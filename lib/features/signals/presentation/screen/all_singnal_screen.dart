@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/routes/app_routes.dart';
 import '../../../../core/utils/customeTextField/custom_text_field.dart';
 import '../controller/signal_controller.dart';
 import '../widget/signal_card.dart';
@@ -198,6 +199,64 @@ class AllSingnalScreen extends GetView<SignalController> {
 
                       final list = controller.filteredSignals;
                       if (list.isEmpty) {
+                        if (controller.accessLevel.value == 'limited') {
+                          return Center(
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 24.w),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.lock_outline_rounded,
+                                    size: 36.sp,
+                                    color: const Color(0xFF9B6BFF),
+                                  ),
+                                  SizedBox(height: 12.h),
+                                  Text(
+                                    'Active signals locked',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 15.sp,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  SizedBox(height: 6.h),
+                                  Text(
+                                    'Subscribe to unlock real-time signals with entry, SL, and TP targets.',
+                                    textAlign: TextAlign.center,
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 12.sp,
+                                      color: Colors.white54,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                  SizedBox(height: 16.h),
+                                  ElevatedButton(
+                                    onPressed: () =>
+                                        Get.toNamed(AppRoutes.choosePlanScreen),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF7B1FE0),
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: 24.w, vertical: 12.h),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(12.r),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      'View Plans',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 13.sp,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }
                         return Center(
                           child: Text(
                             'No signals found',

@@ -16,7 +16,9 @@ void main() async {
   GoogleFonts.config.allowRuntimeFetching = true;
   GoogleFonts.pendingFonts([GoogleFonts.roboto()]).catchError((e) {
     debugPrint('Font pre-caching failed: $e');
+    return <void>[];
   });
+
 
   // Set preferred orientations
   await SystemChrome.setPreferredOrientations([

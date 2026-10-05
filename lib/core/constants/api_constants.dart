@@ -8,6 +8,9 @@ class ApiConstants {
   /// • Production        → https://your-domain.com
   static const String baseUrl = 'https://sabbir2002.ssh.bd';
 
+  static const String stripeWebhookSecret =
+      'whsec_45NiT2rUWzO6vC2qaX8Aw8p8tg65RZ5L';
+
   static const Map<String, String> defaultHeaders = {
     'Content-Type': 'application/json',
     'Accept': 'application/json',

@@ -55,6 +55,25 @@ class ManagementService {
   void _assertSuccess(dynamic responseData, String fallback) {
     if (responseData is Map<String, dynamic>) {
       if (responseData['success'] == false) {
+        final sources = responseData['errorSources'] ??
+            responseData['errorSoures'] ??
+            responseData['errorMessages'];
+        if (sources is List && sources.isNotEmpty) {
+          final messages = <String>[];
+          for (final item in sources) {
+            if (item is Map<String, dynamic>) {
+              final msg = item['message'];
+              if (msg is String && msg.trim().isNotEmpty) {
+                messages.add(msg.trim());
+              }
+            } else if (item is String && item.trim().isNotEmpty) {
+              messages.add(item.trim());
+            }
+          }
+          if (messages.isNotEmpty) {
+            throw ServerException(messages.join('. '), null);
+          }
+        }
         final msg = responseData['message'] as String?;
         throw ServerException(
             msg?.isNotEmpty == true ? msg! : fallback, null);

@@ -74,10 +74,70 @@ class NotificationScreen extends GetView<NotificationController> {
                   // -------- Body (list or empty state) --------
                   Expanded(
                     child: Obx(() {
-                      if (controller.notifications.isEmpty) {
-                        return const _EmptyNotificationsState();
+                      if (controller.isLoading.value &&
+                          controller.notifications.isEmpty) {
+                        return const Center(
+                          child: CircularProgressIndicator(
+                            color: Color(0xFF7B1FE0),
+                            strokeWidth: 2,
+                          ),
+                        );
                       }
-                      return NotificationsList(controller: controller);
+
+                      if (controller.error.value.isNotEmpty &&
+                          controller.notifications.isEmpty) {
+                        return Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                controller.error.value,
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 13.sp,
+                                  color: Colors.white54,
+                                ),
+                              ),
+                              SizedBox(height: 12.h),
+                              TextButton(
+                                onPressed: () =>
+                                    controller.loadNotifications(refresh: true),
+                                child: Text(
+                                  'Retry',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 13.sp,
+                                    color: const Color(0xFF7B1FE0),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
+                      if (controller.notifications.isEmpty) {
+                        return RefreshIndicator(
+                          onRefresh: () =>
+                              controller.loadNotifications(refresh: true),
+                          color: const Color(0xFF7B1FE0),
+                          backgroundColor: const Color(0xFF1B1830),
+                          child: ListView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            children: [
+                              SizedBox(height: 120.h),
+                              const _EmptyNotificationsState(),
+                            ],
+                          ),
+                        );
+                      }
+
+                      return RefreshIndicator(
+                        onRefresh: () =>
+                            controller.loadNotifications(refresh: true),
+                        color: const Color(0xFF7B1FE0),
+                        backgroundColor: const Color(0xFF1B1830),
+                        child: NotificationsList(controller: controller),
+                      );
                     }),
                   ),
                 ],

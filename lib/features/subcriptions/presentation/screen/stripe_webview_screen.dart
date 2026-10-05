@@ -23,7 +23,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 /// ```
 class StripeWebViewScreen extends StatefulWidget {
   final String checkoutUrl;
-  final VoidCallback? onSuccess;
+  final void Function(String? sessionId)? onSuccess;
   final VoidCallback? onCancel;
 
   const StripeWebViewScreen({
@@ -78,7 +78,13 @@ class _StripeWebViewScreenState extends State<StripeWebViewScreen> {
 
             if (!_hasHandled && _isSuccessUrl(url)) {
               _hasHandled = true;
-              _handleResult(success: true, delayed: true);
+              final uri = Uri.tryParse(url);
+              final sessionId = uri?.queryParameters['session_id'];
+              _handleResult(
+                success: true,
+                sessionId: sessionId,
+                delayed: true,
+              );
               return NavigationDecision.prevent;
             }
 
@@ -99,7 +105,11 @@ class _StripeWebViewScreenState extends State<StripeWebViewScreen> {
   ///
   /// Get.back() is unsafe here: a GetX snackbar is also a route, so it would
   /// pop the snackbar and leave the checkout on screen.
-  void _handleResult({required bool success, bool delayed = false}) {
+  void _handleResult({
+    required bool success,
+    String? sessionId,
+    bool delayed = false,
+  }) {
     if (_isClosing) return;
     _isClosing = true;
     _hasHandled = true;
@@ -110,7 +120,7 @@ class _StripeWebViewScreenState extends State<StripeWebViewScreen> {
       if (navigator.canPop()) navigator.pop();
 
       if (success) {
-        widget.onSuccess?.call();
+        widget.onSuccess?.call(sessionId);
       } else {
         widget.onCancel?.call();
       }

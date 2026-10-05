@@ -201,30 +201,44 @@ class SignalModel {
   bool get isActive => status == 'Active';
 
   factory SignalModel.fromJson(Map<String, dynamic> json) {
+    final pubRaw = json['publishedAt'] ?? json['pub'];
+    DateTime? publishedAt;
+    if (pubRaw is String) {
+      publishedAt = DateTime.tryParse(pubRaw);
+    } else if (pubRaw is int) {
+      publishedAt = DateTime.fromMillisecondsSinceEpoch(pubRaw);
+    }
+
     return SignalModel(
-      id: json['id']?.toString() ?? '',
-      asset: json['asset'] as String? ?? '',
-      category: json['category'] as String? ?? '',
-      categoryLabel: json['categoryLabel'] as String? ??
-          json['category'] as String? ?? '',
-      type: json['type'] as String? ?? '',
-      direction: json['direction'] as String? ?? 'BUY',
-      entry: json['entry'] as String? ?? '',
-      sl: json['sl'] as String? ?? '',
-      slPercent: json['slPercent'] as String?,
-      tp1: json['tp1'] as String? ?? '',
-      tp2: json['tp2'] as String?,
-      tp3: json['tp3'] as String?,
-      tp1Percent: json['tp1Percent'] as String?,
-      riskReward: json['riskReward'] as String?,
-      status: json['status'] as String? ?? 'Active',
-      publishedAt: json['publishedAt'] != null
-          ? DateTime.tryParse(json['publishedAt'].toString())
-          : null,
-      publishedLabel: json['publishedLabel'] as String? ?? '',
-      timeAgo: json['timeAgo'] as String? ?? '',
-      notes: json['notes'] as String? ?? '',
-      isGoldSignal: json['isGoldSignal'] as bool? ?? false,
+      id: json['id']?.toString() ?? json['_id']?.toString() ?? '',
+      asset: json['asset']?.toString() ?? '',
+      category: json['category']?.toString() ??
+          json['cat']?.toString() ??
+          '',
+      categoryLabel: json['categoryLabel']?.toString() ??
+          json['category']?.toString() ??
+          json['cat']?.toString() ??
+          '',
+      type: json['type']?.toString() ?? '',
+      direction: json['direction']?.toString() ??
+          json['dir']?.toString() ??
+          'BUY',
+      entry: json['entry']?.toString() ?? '',
+      sl: json['sl']?.toString() ?? '',
+      slPercent: json['slPercent']?.toString(),
+      tp1: json['tp1']?.toString() ?? '',
+      tp2: json['tp2']?.toString(),
+      tp3: json['tp3']?.toString(),
+      tp1Percent: json['tp1Percent']?.toString(),
+      riskReward: json['riskReward']?.toString(),
+      status: json['status']?.toString() ?? 'Active',
+      publishedAt: publishedAt,
+      publishedLabel: json['publishedLabel']?.toString() ??
+          json['pub']?.toString() ??
+          '',
+      timeAgo: json['timeAgo']?.toString() ?? '',
+      notes: json['notes']?.toString() ?? '',
+      isGoldSignal: json['isGoldSignal'] == true,
     );
   }
 }

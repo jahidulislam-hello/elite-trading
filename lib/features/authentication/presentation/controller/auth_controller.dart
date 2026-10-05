@@ -151,10 +151,9 @@ class AuthController extends GetxController {
       _showSuccess('Welcome back, ${result.user.displayName}!');
 
       // Skip subscription gate when user already has an active/trial plan
-      final status = result.user.subscriptionStatus.toLowerCase();
-      final hasActiveSub = status == 'active' || status == 'trial';
+      final hasActiveSub = result.user.isSubscriptionActive;
       Get.offAllNamed(
-        hasActiveSub ? AppRoutes.bottomNavScreen : AppRoutes.subscripFirstPage,
+        hasActiveSub ? AppRoutes.bottomNavScreen : AppRoutes.choosePlanScreen,
       );
     } on AppException catch (e) {
       _showError(_friendlyError(e));
@@ -321,6 +320,20 @@ class AuthController extends GetxController {
   bool get isLoggedIn => _storage.getBool(StorageKeys.isLoggedIn) ?? false;
 
   String? get authToken => _storage.getString(StorageKeys.authToken);
+
+  /// Reloads profile from the server to refresh subscription status & user details.
+  Future<UserModel?> refreshCurrentUser() async {
+    try {
+      final user = await _authService.myProfile();
+      currentUser.value = user;
+      await _storage.setString(StorageKeys.userId, user.id);
+      await _storage.setString(StorageKeys.userEmail, user.email);
+      await _storage.setString(StorageKeys.userName, user.displayName);
+      return user;
+    } catch (_) {
+      return null;
+    }
+  }
 
   // ─── DISPOSE ──────────────────────────────────────────────────────────────
 

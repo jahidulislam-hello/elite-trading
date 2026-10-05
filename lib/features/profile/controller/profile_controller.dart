@@ -120,7 +120,7 @@ class ProfileController extends GetxController {
     networkAvatarUrl.value = resolveMediaUrl(avatar);
 
     final status = user.subscriptionStatus.toLowerCase();
-    final hasAccess = status == 'active' || status == 'trial';
+    final hasAccess = user.isSubscriptionActive;
     isPremiumMember.value = hasAccess;
 
     final planType = (user.subscriptionType ?? '').trim();
@@ -130,6 +130,12 @@ class ProfileController extends GetxController {
     } else if (hasAccess) {
       memberBadgeLabel.value = 'PREMIUM MEMBER';
       planLabel.value = 'PREMIUM PLAN';
+    } else if (user.subscriptionEndDate != null &&
+        user.subscriptionEndDate!.isBefore(DateTime.now())) {
+      memberBadgeLabel.value = 'EXPIRED';
+      planLabel.value = planType.isNotEmpty
+          ? '${planType.toUpperCase()} (EXPIRED)'
+          : 'EXPIRED PLAN';
     } else {
       memberBadgeLabel.value = '';
       planLabel.value = 'FREE PLAN';
@@ -140,6 +146,10 @@ class ProfileController extends GetxController {
       planStatus.value = '$prefix ${_formatDate(user.subscriptionEndDate!)}';
     } else if (hasAccess) {
       planStatus.value = status == 'trial' ? 'Trial active' : 'Active';
+    } else if (user.subscriptionEndDate != null &&
+        user.subscriptionEndDate!.isBefore(DateTime.now())) {
+      planStatus.value =
+          'Expired on ${_formatDate(user.subscriptionEndDate!)}';
     } else {
       planStatus.value = 'No active subscription';
     }

@@ -189,6 +189,7 @@ class AuthService {
     String? lastName,
     String? phone,
     String? address,
+    String? image,
   }) async {
     final body = <String, dynamic>{
       if (name != null) 'name': name,
@@ -196,6 +197,7 @@ class AuthService {
       if (lastName != null) 'lastName': lastName,
       if (phone != null) 'phone': phone,
       if (address != null) 'address': address,
+      if (image != null) 'image': image,
     };
     final response = await _api.patch(
       ApiEndpoints.updateProfile,
@@ -237,8 +239,28 @@ class AuthService {
     if (responseData is Map<String, dynamic>) {
       final success = responseData['success'];
       if (success == false) {
+        final sources = responseData['errorSources'] ??
+            responseData['errorSoures'] ??
+            responseData['errorMessages'];
+        if (sources is List && sources.isNotEmpty) {
+          final messages = <String>[];
+          for (final item in sources) {
+            if (item is Map<String, dynamic>) {
+              final msg = item['message'];
+              if (msg is String && msg.trim().isNotEmpty) {
+                messages.add(msg.trim());
+              }
+            } else if (item is String && item.trim().isNotEmpty) {
+              messages.add(item.trim());
+            }
+          }
+          if (messages.isNotEmpty) {
+            throw ServerException(messages.join('. '), null);
+          }
+        }
         final msg = responseData['message'] as String?;
-        throw ServerException(msg?.isNotEmpty == true ? msg! : fallbackMessage, null);
+        throw ServerException(
+            msg?.isNotEmpty == true ? msg! : fallbackMessage, null);
       }
     }
   }

@@ -51,14 +51,38 @@ class SignalService {
     final response =
         await _api.get(ApiEndpoints.signalsApp, queryParameters: query);
     _assertSuccess(response.data, 'Failed to load signals.');
-    final data = response.data['data'] as Map<String, dynamic>? ?? {};
-    final rawSignals = data['signals'] as List? ?? [];
+
+    final dynamic dataRaw = response.data['data'];
+    List rawSignals = [];
+    dynamic rawAccess;
+
+    if (dataRaw is List) {
+      rawSignals = dataRaw;
+    } else if (dataRaw is Map) {
+      final mapData = Map<String, dynamic>.from(dataRaw);
+      rawAccess = mapData['access'];
+      final signalsCandidate =
+          mapData['signals'] ?? mapData['data'] ?? mapData['items'];
+      if (signalsCandidate is List) {
+        rawSignals = signalsCandidate;
+      }
+    }
+
+    final signals = <SignalModel>[];
+    for (final item in rawSignals) {
+      if (item is Map) {
+        signals.add(
+          SignalModel.fromJson(Map<String, dynamic>.from(item)),
+        );
+      }
+    }
+
     return SignalListResult(
-      access: parseAccessLevel(data['access']),
-      signals: rawSignals
-          .map((e) => SignalModel.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      pagination: response.data['pagination'] as Map<String, dynamic>?,
+      access: parseAccessLevel(rawAccess),
+      signals: signals,
+      pagination: response.data['pagination'] is Map
+          ? Map<String, dynamic>.from(response.data['pagination'] as Map)
+          : null,
     );
   }
 
@@ -167,6 +191,25 @@ class SignalService {
   void _assertSuccess(dynamic responseData, String fallback) {
     if (responseData is Map<String, dynamic>) {
       if (responseData['success'] == false) {
+        final sources = responseData['errorSources'] ??
+            responseData['errorSoures'] ??
+            responseData['errorMessages'];
+        if (sources is List && sources.isNotEmpty) {
+          final messages = <String>[];
+          for (final item in sources) {
+            if (item is Map<String, dynamic>) {
+              final msg = item['message'];
+              if (msg is String && msg.trim().isNotEmpty) {
+                messages.add(msg.trim());
+              }
+            } else if (item is String && item.trim().isNotEmpty) {
+              messages.add(item.trim());
+            }
+          }
+          if (messages.isNotEmpty) {
+            throw ServerException(messages.join('. '), null);
+          }
+        }
         final msg = responseData['message'] as String?;
         throw ServerException(
             msg?.isNotEmpty == true ? msg! : fallback, null);

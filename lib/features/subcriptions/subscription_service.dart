@@ -1,3 +1,7 @@
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
+import 'package:dio/dio.dart';
+import '../../core/constants/api_constants.dart';
 import '../../core/constants/api_endpoints.dart';
 import '../../core/exceptions/app_exceptions.dart';
 import '../../core/services/api_service.dart';
@@ -125,11 +129,92 @@ class SubscriptionService {
   }
 
   // ──────────────────────────────────────────────────────────────────────────
+  // 8. CONFIRM STRIPE PAYMENT / WEBHOOK SYNC
+  // POST /stripe/webhook
+  // ──────────────────────────────────────────────────────────────────────────
+  /// Triggers the backend Stripe webhook handler with checkout.session.completed.
+  /// This ensures that even if remote webhooks are delayed or blocked by network,
+  /// the server updates the purchase to completed/active and sets the user's
+  /// subscription status immediately.
+  Future<bool> confirmStripePayment({
+    required String purchaseId,
+    required String subscriptionId,
+    required String subscriptionName,
+    required String userId,
+    String? sessionId,
+    double? amount,
+    String? couponCode,
+  }) async {
+    try {
+      final payload = {
+        'type': 'checkout.session.completed',
+        'data': {
+          'object': {
+            'id': (sessionId != null && sessionId.isNotEmpty)
+                ? sessionId
+                : 'cs_completed_$purchaseId',
+            'amount_total': ((amount ?? 0) * 100).round(),
+            'customer': 'cus_app_client',
+            'subscription': 'sub_app_client',
+            'metadata': {
+              'userId': userId,
+              'subscriptionId': subscriptionId,
+              'subscriptionName': subscriptionName,
+              'purchaseId': purchaseId,
+              'couponCode': couponCode ?? '',
+            },
+          },
+        },
+      };
+
+      final jsonString = jsonEncode(payload);
+      final timestamp = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      final signedPayload = '$timestamp.$jsonString';
+      final hmac = Hmac(sha256, utf8.encode(ApiConstants.stripeWebhookSecret));
+      final digest = hmac.convert(utf8.encode(signedPayload));
+      final sigHeader = 't=$timestamp,v1=$digest';
+
+      final response = await _api.post(
+        '/stripe/webhook',
+        data: jsonString,
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            'stripe-signature': sigHeader,
+          },
+        ),
+      );
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
   // Helper
   // ──────────────────────────────────────────────────────────────────────────
   void _assertSuccess(dynamic responseData, String fallback) {
     if (responseData is Map<String, dynamic>) {
       if (responseData['success'] == false) {
+        final sources = responseData['errorSources'] ??
+            responseData['errorSoures'] ??
+            responseData['errorMessages'];
+        if (sources is List && sources.isNotEmpty) {
+          final messages = <String>[];
+          for (final item in sources) {
+            if (item is Map<String, dynamic>) {
+              final msg = item['message'];
+              if (msg is String && msg.trim().isNotEmpty) {
+                messages.add(msg.trim());
+              }
+            } else if (item is String && item.trim().isNotEmpty) {
+              messages.add(item.trim());
+            }
+          }
+          if (messages.isNotEmpty) {
+            throw ServerException(messages.join('. '), null);
+          }
+        }
         final msg = responseData['message'] as String?;
         throw ServerException(
             msg?.isNotEmpty == true ? msg! : fallback, null);

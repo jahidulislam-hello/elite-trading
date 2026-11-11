@@ -1,8 +1,8 @@
 import 'dart:io';
 import 'package:elite_trading/core/exceptions/app_exceptions.dart';
-import 'package:elite_trading/core/utils/media_url.dart';
 import 'package:elite_trading/core/routes/app_routes.dart';
 import 'package:elite_trading/core/services/storage_service.dart';
+import 'package:elite_trading/core/utils/media_url.dart';
 import 'package:elite_trading/features/authentication/auth_service.dart';
 import 'package:elite_trading/features/authentication/data/user_model.dart';
 import 'package:elite_trading/features/authentication/presentation/controller/auth_controller.dart';

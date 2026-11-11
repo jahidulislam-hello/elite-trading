@@ -22,6 +22,8 @@ class MyApp extends StatelessWidget {
           theme: ThemeData(
             fontFamily: 'Helvetica',
             textTheme: GoogleFonts.poppinsTextTheme(
+
+
               Theme.of(context).textTheme,
             ),
             appBarTheme: AppBarTheme(

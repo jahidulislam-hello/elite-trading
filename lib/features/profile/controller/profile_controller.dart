@@ -38,6 +38,8 @@ class ProfileController extends GetxController {
 
   final Rx<File?> pickedAvatarFile = Rx<File?>(null);
 
+
+
   static const _monthNames = [
     'Jan',
     'Feb',

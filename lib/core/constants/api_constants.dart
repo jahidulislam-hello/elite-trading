@@ -6,7 +6,9 @@ class ApiConstants {
   /// • iOS simulator     → http://127.0.0.1:2002
   /// • Real device (LAN) → http://192.168.x.x:2002
   /// • Production        → https://your-domain.com
-  static const String baseUrl = 'https://sabbir2002.ssh.bd';
+  // static const String baseUrl = 'https://sabbir2002.ssh.bd';
+  static const String baseUrl = 'https://api.elitetradersignals.com';
+
 
   static const String stripeWebhookSecret =
       'whsec_45NiT2rUWzO6vC2qaX8Aw8p8tg65RZ5L';
